@@ -302,3 +302,7 @@ input.req,.tile .amt.req{border-color:var(--down)!important;box-shadow:0 0 0 3px
 .bl td.rowact,.bl th.rowact{width:52px;padding:0 4px;white-space:nowrap}
 .icon-btn.xs{width:22px;height:22px;font-size:13px;color:var(--ink-3)}
 .icon-btn.xs:hover{color:var(--accent);background:var(--bg-soft)}
+
+.tile .obsrow{padding:5px 10px;gap:8px;background:var(--bg-soft)}
+.tile .obsrow .lbl{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);font-family:var(--mono);font-weight:600}
+.tile .obsrow input{flex:1;min-width:0;height:24px;font-size:11.5px;padding:0 8px;background:var(--bg-panel)}

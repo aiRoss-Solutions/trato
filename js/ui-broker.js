@@ -145,7 +145,7 @@ function renderOpModule(card, idx){
       const lim=+st.lim; const b=st.last||C.buildPrice({pair:st.pair,dir:st.dir,divOp:v.divOp,pt:PX.tradingPrice(st.pair),valueDate:v.tipoOrden==='FORWARD'?v.vd:null,marginPorMil:C.clientMarginPorMil(S.client,'spot')});
       const o = { idGlobal:C.nextGlobalId(), cliente:S.client.id, clienteNombre:S.client.nombre, canal:'WEB', usuario:S.user.user, tipoOrden:v.tipoOrden, tipoOp:st.tipo, par:st.pair, dir:st.dir, divOp:v.divOp, nominal:st.amount, contra:C.contravalor(st.pair,st.amount,v.divOp,lim), precioLimite:lim, precioOficina:lim,
         fechaOp:PX.iso(today()), fechaValor:st.vd, fechaValidez:st.fval, estado:'Orden enviada a mercado', origen:'trato', clientBuysBase:b.clientBuysBase, cuenta: v.tipoOrden==='FORWARD'?S.ctx.linea.n:S.ctx.cargo.n, markupOk:true, comision:Math.max(5,st.amount*0.0005), cuentaComision:S.ctx.cargo.n };
-      C.addOp(o); C.watchOrder(o); if(st.tipo!=='AVISO') consume(); else C.log('core','aviso dado de alta: no llama a restaFirma ni consume operación',{idGlobal:o.idGlobal});
+      C.addOp(o); C.watchOrder(o); if(st.tipo!=='AVISO') consume(); else C.log('core','aviso dado de alta: no descuenta firma ni consume operación',{idGlobal:o.idGlobal});
       toast(`${st.tipo} enviada a mercado.`,'ok'); return;
     }
     st.live=true; paint(); $('[data-stt]',card).textContent='solicitando precio…'; C.log('fix',`RFS → proveedor: ${st.pair} ${st.dir} ${v.divOp} ${fmtN(st.amount,0)}`,{canal:'WEB'});
@@ -163,7 +163,7 @@ function renderOpModule(card, idx){
     acts.style.flexWrap='wrap'; acts.innerHTML = `<div style="flex:1 1 100%;font-size:12px;line-height:1.35" class="muted">${o.estado==='Ejecutada'?`Ref. <b class="mono">${o.ref}</b> · comisión <b class="mono">${fmtN(o.comision,2)} €</b> · cuenta <span class="mono">${esc(o.cuenta)}</span>`:`<span style="color:var(--down)">${esc(o.motivo||o.estado)}. Vuelva a solicitar precio.</span>`}</div><div style="display:flex;gap:8px;align-items:center;margin-left:auto">${stateChip(o.estado,C.STATES)}<button class="btn btn-primary btn-sm" data-new>Nueva operación</button></div>`;
     $('[data-new]',card).onclick=()=>{ st.live=false; st.frozen=false; st.amount=0; paint(); };
   }
-  function consume(){ if(firma && firma.ops!==null){ firma.ops--; C.log('ws','restaFirma()',{restantes:firma.ops}); } renderFoot(); }
+  function consume(){ if(firma && firma.ops!==null){ firma.ops--; C.log('ws','core.firma.descontar()',{restantes:firma.ops}); } renderFoot(); }
   paint();
 }
 function renderBlotter(){ const d=q('[data-blotter]'); if(!d) return; S.dock.tab = S.dock.tab==='usuario' ? 'cliente' : S.dock.tab;

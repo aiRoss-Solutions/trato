@@ -103,7 +103,8 @@ function renderTile(t, i, flex){
   const el = h(`<div class="tile" data-i="${i}">
     <div class="t-head"><span class="pair" data-pair title="Cambiar par">${FLAGS[base]||''} ${esc(t.pair)} ${FLAGS[quote]||''}</span>
       <span class="seg"><button data-tipo="OTROS" class="${t.tipo==='OTROS'?'on':''}" title="Clave de arbitraje y seguros de cambio">Otros</button><button data-tipo="CONVERSION" class="${t.tipo==='CONVERSION'?'on':''}" ${g||flex?'disabled':''} title="Contado: spot, hoy y mañana">Conversión</button></span>
-      <span class="obs"><input data-obs placeholder="${t.tipo==='OTROS'&&C.cfg.obsObligatorias?'Motivo / observaciones · obligatorio':'Observaciones'}" value="${esc(t.obs)}"></span>${flex?'':'<button class="icon-btn close" data-close>✕</button>'}</div>
+      <span class="grow" style="flex:1"></span>${flex?'':'<button class="icon-btn close" data-close>✕</button>'}</div>
+    <div class="t-row obsrow"><span class="lbl">Obs.</span><input data-obs placeholder="${t.tipo==='OTROS'&&C.cfg.obsObligatorias?'Motivo / observaciones · obligatorio en claves de arbitraje':'Observaciones (opcional)'}" value="${esc(t.obs)}"></div>
     <div class="prices">
       <div class="side" data-side="COMPRAR"><div class="lbl"><b>COMPRAR ${esc(t.divOp)}</b><span>▾</span></div><div class="px" data-px="COMPRAR">—</div></div>
       <div class="side" data-side="VENDER"><div class="lbl"><b>VENDER ${esc(t.divOp)}</b><span>▾</span></div><div class="px" data-px="VENDER">—</div></div>

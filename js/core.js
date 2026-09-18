@@ -28,9 +28,9 @@ export function findClient(q){
 // WS getDatosEmpresa: lo que el core devolvería al conectar un cliente
 export function getDatosEmpresa(c){
   const out = { idPersona:c.id, nif:c.nif, tutor:c.tutor, estadoMifid:c.mifid, titularMifid:c.titularMifid, lei:c.lei, leiRenov:c.leiRenov,
-    email:c.email, tel:c.tel, diferencialPorMil:c.margenPorMil, indNivelCliente:c.nivel, margenPersonalizado:c.margenPersonalizado, margenes:c.margenes,
+    email:c.email, tel:c.tel, margenPorMil:c.margenPorMil, nivelCliente:c.nivel, margenPersonalizado:c.margenPersonalizado, margenes:c.margenes,
     cuentas:c.cuentas, lineas:c.lineas, ordenantes:c.ordenantes };
-  log('ws','WSClienteBrokerDivisa.getDatosEmpresa', {nif:c.nif, '→':{diferencialPorMil:c.margenPorMil, indNivelCliente:c.nivel, estadoMifid:c.mifid, lei:c.lei}});
+  log('ws','core.clientes.getDatosCliente', {nif:c.nif, '→':{margenPorMil:c.margenPorMil, nivelCliente:c.nivel, estadoMifid:c.mifid, lei:c.lei}});
   return out;
 }
 
@@ -77,7 +77,7 @@ export function validatePreTrade({client, ctx, pair, dir, divOp, nominal, tipoOr
   if(!nominal || nominal<=0) errs.push('Indique un importe.');
   if(client?.generic){
     if(tipoOperacion!=='CLAVE DE ARBITRAJE') errs.push('Con cliente genérico solo se pueden realizar claves de arbitraje.');
-    log('ws','WSTradingBrokerDivisa.validacionPreTradeSpot', {cliente:'GENÉRICO', resultado: errs.length?'KO':'OK', errs});
+    log('ws','core.trading.validacionPreTrade', {cliente:'GENÉRICO', resultado: errs.length?'KO':'OK', errs});
     return errs;
   }
   if(!client) errs.push('Seleccione un cliente.');
@@ -95,7 +95,7 @@ export function validatePreTrade({client, ctx, pair, dir, divOp, nominal, tipoOr
     }
     if(ctx.linea && ctx.linea.n.startsWith('89') && tipoOperacion!=='CLAVE DE ARBITRAJE' && ctx.useLineaForSpot) errs.push('Una línea de crédito (89) solo admite forward, no contado.');
   }
-  log('ws','WSTradingBrokerDivisa.validacionPreTradeSpot', {nif:client?.nif, par:pair, tipoOrden, nominal, resultado: errs.length?'KO':'OK', errs});
+  log('ws','core.trading.validacionPreTrade', {nif:client?.nif, par:pair, tipoOrden, nominal, resultado: errs.length?'KO':'OK', errs});
   return errs;
 }
 
