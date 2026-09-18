@@ -1,0 +1,24 @@
+/* Trato · tokens de diseño — sistema "navy sin cajas" de aiRoss */
+:root{
+  --navy:#071B57; --navy-deep:#050F38; --navy-ink:#071B57; --band:#0B3ACC; --accent:#2F7BFF;
+  --ink:#1B2233; --ink-2:#55647A; --ink-3:#8A96AA;
+  --bg:#FFFFFF; --bg-soft:#F4F7FD; --bg-panel:#FFFFFF; --bg-rail:#071B57;
+  --line:#C7D2E8; --line-2:#9FB2D6;
+  --up:#12A150; --down:#D64545; --warn:#C98A00; --info:#2F7BFF;
+  --on-navy:#FFFFFF; --on-navy-2:#BFD6FF;
+  --editable:#2F7BFF;              /* lo que en el sistema anterior era naranja, aquí es acento */
+  --radius:4px; --radius-lg:8px;
+  --font:'Geist','Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'Geist Mono','JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+  --shadow:0 8px 28px rgba(7,27,87,.12);
+  --rail-w:56px; --dock-h:300px;
+}
+/* Tema "Sala": para la mesa, fondo profundo */
+:root[data-theme="sala"]{
+  --ink:#E8EEFB; --ink-2:#A9B7D3; --ink-3:#6F7F9E; --navy-ink:#E8EEFB;
+  --bg:#050F38; --bg-soft:#0A1A4D; --bg-panel:#0B1C55; --bg-rail:#030A26;
+  --line:#24428F; --line-2:#3A5BB0;
+  --accent:#4D8DFF; --editable:#4D8DFF;
+  --up:#2ECC71; --down:#FF6B6B; --warn:#F2B134;
+  --shadow:0 8px 28px rgba(0,0,0,.45);
+}

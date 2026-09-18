@@ -1,0 +1,1 @@
+{ "name": "trato", "version": "0.1.0", "private": true, "type": "module", "description": "Prototipo navegable de mesa de distribución FX (aiRoss)", "scripts": { "start": "python3 -m http.server 8765 --bind 127.0.0.1" } }
