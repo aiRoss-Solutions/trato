@@ -53,6 +53,16 @@ docs/CHANGELOG.md     qué cambió en cada versión
 6. Un cambio = un commit pequeño con mensaje en español. La rama de trabajo es `main` hasta que haya equipo tocando a la vez.
 7. Antes de dar por hecho un cambio visual: abrirlo en el navegador, sin errores de consola, y mirar el tema claro y el oscuro.
 
+## Repo, ramas y despliegue
+- Repo: **`aiRoss-Solutions/trato`** (privado). Rama por defecto **`develop`**.
+- Circuito del equipo (regla de **Javi Hombrados / Kairos**): se trabaja en `develop` = **UAT**, y se promueve a
+  `main` = **PRO**. Claude y el resto **solo tocan código, commit y push**.
+- **No se toca la infra**: ni proyectos/settings/dominios de Vercel, ni GitHub Actions, ni secretos
+  (`VERCEL_TOKEN`, `ORG_ID`, `PROJECT_ID`). Eso lo cablea Javi, que es el dueño del circuito.
+- El sitio es **estático puro**: no hay build. Quien monte el deploy solo necesita servir la raíz del repo
+  (sin install, sin build command, output = `.`). `robots.txt` ya deja el entorno como no indexable.
+- Si el deploy no sale o hace falta permiso/config, **avisar a Javi, no tocar**.
+
 ## Cómo se pide un cambio (para Lucio, Camilo, Javi)
 - Escribir la petición en `docs/PETICIONES.md` (o en la carpeta compartida de Dropbox `peticiones/`) con la plantilla:
   **qué**, **dónde** (pantalla / canal), **por qué** (valor para el cliente o para la demo), **prioridad**.
