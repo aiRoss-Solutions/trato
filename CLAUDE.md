@@ -8,8 +8,8 @@
   sala (sales trading), banca telefónica y web de empresas (bróker).
 - Simula la operativa completa: contado, seguro de cambio (forward), seguro de cambio flexible, anticipos y cancelaciones,
   órdenes limitadas / call orders / avisos, cliente genérico, mark-up de la mesa, blotters, posición, firma ágil del canal web.
-- **No es 2Trade ni se llama así en ningún sitio.** Toma la *distribución en pantalla* de un sistema de referencia (manuales de
-  usuario) pero con estilo propio (paleta aiRoss navy, sin cajas). El nombre "Trato" es provisional y vive en una sola
+- **No lleva el nombre del sistema original en ningún sitio.** Toma la *distribución en pantalla* de un sistema de
+  referencia (sus manuales de usuario) pero con estilo propio (paleta aiRoss navy, sin cajas). El nombre "Trato" es provisional y vive en una sola
   constante: `BRAND.name` en `js/data.js`.
 - Todo dato es **ficticio**: clientes, personas, NIF, LEI, cuentas (entidad 0999, que no existe). Nunca meter nombres,
   códigos de entidad ni identificadores reales de ningún banco.
@@ -81,3 +81,11 @@ docs/CHANGELOG.md     qué cambió en cada versión
 - **DO1 / DO2**: mensajes al core al ejecutar (alta) y al completar (cierre). Se ven en la *Consola de integración*.
 - **Switch proveedor → libros**: ON = la cobertura va al sistema de tesorería del banco; OFF = el proveedor cubre en mercado.
 - **Canales**: SALA (mark-up editable, cliente genérico, órdenes) · TEL (ve márgenes, no los toca) · WEB (solo precio final).
+
+## Entornos publicados (GitHub Pages)
+- **PRO** ← rama `main` → <https://aiross-solutions.github.io/trato/>
+- **UAT** ← rama `develop` → <https://aiross-solutions.github.io/trato/uat/> (lleva chapa naranja "UAT" abajo a la derecha)
+- Los publica `.github/workflows/pages.yml` en cada push a `main` o `develop`. No hay build: se copian los ficheros tal cual.
+- El repo es **público** para poder usar Pages con el plan free de la org; por eso aquí no entra **ningún** dato, nombre ni
+  documento real de cliente. Todo eso vive en Dropbox, no en el repo.
+- Esto **no** es el circuito de Vercel de Javi: no comparte workflows ni secretos con `el_espacio` / `aiross_web`.
