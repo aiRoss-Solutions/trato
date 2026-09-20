@@ -144,7 +144,7 @@ function renderOpModule(card, idx){
     if(st.tipo!=='SPOTFWD'){ // órdenes: se envían directamente
       const lim=+st.lim; const b=st.last||C.buildPrice({pair:st.pair,dir:st.dir,divOp:v.divOp,pt:PX.tradingPrice(st.pair),valueDate:v.tipoOrden==='FORWARD'?v.vd:null,marginPorMil:C.clientMarginPorMil(S.client,'spot')});
       const o = { idGlobal:C.nextGlobalId(), cliente:S.client.id, clienteNombre:S.client.nombre, canal:'WEB', usuario:S.user.user, tipoOrden:v.tipoOrden, tipoOp:st.tipo, par:st.pair, dir:st.dir, divOp:v.divOp, nominal:st.amount, contra:C.contravalor(st.pair,st.amount,v.divOp,lim), precioLimite:lim, precioOficina:lim,
-        fechaOp:PX.iso(today()), fechaValor:st.vd, fechaValidez:st.fval, estado:'Orden enviada a mercado', origen:'trato', clientBuysBase:b.clientBuysBase, cuenta: v.tipoOrden==='FORWARD'?S.ctx.linea.n:S.ctx.cargo.n, markupOk:true, comision:Math.max(5,st.amount*0.0005), cuentaComision:S.ctx.cargo.n };
+        fechaOp:PX.iso(today()), fechaValor:st.vd, fechaValidez:st.fval, estado:'Orden enviada a mercado', origen:'trato', clientBuysBase:b.clientBuysBase, cuenta: v.tipoOrden==='FORWARD'?S.ctx.linea.n:S.ctx.cargo.n, markupOk:true, comision:C.comision(st.amount), cuentaComision:S.ctx.cargo.n };
       C.addOp(o); C.watchOrder(o); if(st.tipo!=='AVISO') consume(); else C.log('core','aviso dado de alta: no descuenta firma ni consume operación',{idGlobal:o.idGlobal});
       toast(`${st.tipo} enviada a mercado.`,'ok'); return;
     }
@@ -154,9 +154,9 @@ function renderOpModule(card, idx){
   async function hire(){
     const v = validate(); if(!v||!st.last) return; st.frozen=true; st.rfs?.close(); const d=PX.dec(st.pair); const b=st.last;
     const o = { idGlobal:C.nextGlobalId(), cliente:S.client.id, clienteNombre:S.client.nombre, canal:'WEB', usuario:S.user.user, tipoOrden:v.tipoOrden, tipoOp:v.tipoOp, par:st.pair, dir:st.dir, divOp:v.divOp, nominal:st.amount, contra:C.contravalor(st.pair,st.amount,v.divOp,b.precioFinal),
-      precioCliente:+b.precioFinal.toFixed(d), precioOficina:+b.spotT.toFixed(d), ptsFwd:b.ptsCliente, spotPips:b.spotPips, fwdPips:b.fwdPips, beneficio:C.beneficioEUR({pair:st.pair,nominal:st.amount,divOp:v.divOp,precioFinal:b.precioFinal,spotT:b.spotT,ptsCliente:b.ptsCliente,pts:b.pts}),
+      precioCliente:+b.precioFinal.toFixed(d), precioOficina:+(b.spotT + (b.pts||0)).toFixed(d), ptsFwd:b.ptsCliente, spotPips:b.spotPips, fwdPips:b.fwdPips, beneficio:C.beneficioEUR({pair:st.pair,nominal:st.amount,divOp:v.divOp,precioFinal:b.precioFinal,spotT:b.spotT,ptsCliente:b.ptsCliente,pts:b.pts}),
       fechaOp:PX.iso(today()), fechaValor:st.vd, fechaArbitraje: v.tipoOrden==='FORWARD'? PX.iso(PX.addBiz(v.vd,-1)):null, fechaDispCliente: st.op==='FLEX'? st.fdisp:null, fechaDispEstandar: st.op==='FLEX'? PX.iso(C.fdeFor(v.vd)):null,
-      cuenta: v.tipoOrden==='FORWARD'?S.ctx.linea.n:S.ctx.cargo.n, cuenta2: v.tipoOrden==='FORWARD'?null:S.ctx.abono.n, markupOk:true, estado:'Precio recibido', origen:'trato', tsPrecio:new Date().toISOString(), clientBuysBase:b.clientBuysBase, comision:Math.max(5,st.amount*0.0005), cuentaComision:S.ctx.cargo.n };
+      cuenta: v.tipoOrden==='FORWARD'?S.ctx.linea.n:S.ctx.cargo.n, cuenta2: v.tipoOrden==='FORWARD'?null:S.ctx.abono.n, markupOk:true, estado:'Precio recibido', origen:'trato', tsPrecio:new Date().toISOString(), clientBuysBase:b.clientBuysBase, comision:C.comision(st.amount), cuentaComision:S.ctx.cargo.n };
     C.addOp(o); const acts=$('[data-acts]',card); acts.innerHTML=`<span data-chip>${stateChip('Precio recibido',C.STATES)}</span>`;
     await C.executeDeal(o,{ onState:s=>{ const c=$('[data-chip]',card); if(c) c.innerHTML=stateChip(s,C.STATES); } });
     consume();

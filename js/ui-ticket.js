@@ -6,7 +6,7 @@ import { S } from './state.js';
 import { TENORS } from './data.js';
 
 const today = () => { const d=new Date(); d.setHours(12,0,0,0); return d; };
-const comision = nominal => Math.max(5, +(nominal*0.0005).toFixed(2));
+const comision = nominal => C.comision(nominal);   // regla única en core (P-007)
 const cuentaComision = () => S.ctx.cargo?.n || S.client?.cuentas?.find(c=>c.div==='EUR')?.n || '—';
 
 export function tipoOperacion(tile, valueDate){
@@ -89,10 +89,21 @@ export function openTicket(tileEl, tile, dir, {perms, onDone}){
     set('[data-pts]', fmtN(b.ptsCliente/pip,1)+' pts'); set('[data-ptsfdc]', b.ptsFDC!==undefined? fmtN(b.ptsFDC/pip,1)+' pts':'—'); set('[data-ptsflex]', b.ptsFlex!==undefined? fmtN(b.ptsFlex/pip,1)+' pts':'—');
     set('[data-spotpips]', fmtN(b.spotPips,1)); set('[data-fwdpips]', fmtN(b.fwdPips,1)); set('[data-pf-v]', fmtN(b.precioFinal,d)); set('[data-benef]', fmtN(b.beneficio,2));
   }
+  function expire(){
+    setState('Precio expirado'); tileEl.classList.add('expired');
+    const acc=$('[data-accept]',tileEl), sol=$('[data-rfs]',tileEl);
+    if(acc){ acc.disabled=true; acc.classList.replace('btn-primary','btn-ghost'); } if(sol){ sol.classList.replace('btn-ghost','btn-primary'); }
+    $('[data-bar]',tileEl).style.width='0%'; toast('Precio expirado: solicite precio de nuevo.');
+  }
+  function unexpire(){
+    tileEl.classList.remove('expired');
+    const acc=$('[data-accept]',tileEl), sol=$('[data-rfs]',tileEl);
+    if(acc){ acc.disabled=false; acc.classList.replace('btn-ghost','btn-primary'); } if(sol){ sol.classList.replace('btn-primary','btn-ghost'); }
+  }
   function startRFS(){
-    rfs?.close(); setState('Solicitud pendiente'); C.log('fix', `RFS → proveedor: ${pair} ${curDir} ${divOp} ${fmtN(nominal,0)} ${tipoOrden}`, {idGlobal:op.idGlobal});
+    rfs?.close(); unexpire(); setState('Solicitud pendiente'); C.log('fix', `RFS → proveedor: ${pair} ${curDir} ${divOp} ${fmtN(nominal,0)} ${tipoOrden}`, {idGlobal:op.idGlobal});
     setTimeout(()=>{ if(frozen) return; setState('Precio recibido');
-      rfs = PX.openRFS(pair, q => { if(frozen) return; paint(compute(q)); $('[data-bar]',tileEl).style.width = (q.left/60*100)+'%'; if(q.left<=0){ rfs.close(); setState('Solicitud pendiente'); toast('Precio expirado. Solicite precio de nuevo.'); } });
+      rfs = PX.openRFS(pair, q => { if(frozen) return; paint(compute(q)); $('[data-bar]',tileEl).style.width = (q.left/60*100)+'%'; if(q.left<=0){ rfs.close(); expire(); } });
     }, 350);
   }
   startRFS();
@@ -111,7 +122,7 @@ export function openTicket(tileEl, tile, dir, {perms, onDone}){
   $('[data-accept]',tileEl).onclick = async ()=>{
     if(frozen || !last || op.estado!=='Precio recibido'){ toast('No hay precio ejecutable vigente.','err'); return; }
     frozen = true; rfs?.close(); $$('button', tileEl).forEach(b=>{ if(!b.dataset.close) b.disabled=true; });
-    Object.assign(op, { dir:curDir, precioCliente:+last.precioFinal.toFixed(d), precioOficina:+last.spotT.toFixed(d), contra:last.contra, ptsFwd:last.ptsCliente, spotPips:last.spotPips, fwdPips:last.fwdPips,
+    Object.assign(op, { dir:curDir, precioCliente:+last.precioFinal.toFixed(d), precioOficina:+(last.spotT + (last.pts||0)).toFixed(d), /* P-006: oficina a plazo */ contra:last.contra, ptsFwd:last.ptsCliente, spotPips:last.spotPips, fwdPips:last.fwdPips,
       beneficio:last.beneficio, markupOk, clientBuysBase:last.clientBuysBase, tsPrecio:new Date().toISOString() });
     C.addOp(op);
     await C.executeDeal(op, { onState:setState, preErrors:[] });

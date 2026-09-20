@@ -104,6 +104,9 @@ export function validatePreTrade({client, ctx, pair, dir, divOp, nominal, tipoOr
   return errs;
 }
 
+// ---------- comisión (regla del sistema de referencia): 25 € hasta 100.000 de nominal, 0 a partir de ahí ----------
+export function comision(nominal){ return nominal <= 100000 ? 25 : 0; }
+
 // ---------- línea de seguro de cambio (89 …): consumo y restauración ----------
 const fmt = n => new Intl.NumberFormat('es-ES',{maximumFractionDigits:0}).format(n);
 export function lineaByCuenta(n){ for(const c of CLIENTS){ const l = c.lineas.find(x=>x.n===n); if(l) return l; } return null; }
@@ -146,7 +149,7 @@ export function sendDO2(o){ log('mq','DO2 → cola MQ', {idGlobal:o.idGlobal, re
 //  → Ejecutando → (Confirmada en mercado si falta markup | Rechazada si falla el asiento | Ejecutada)
 export const STATES = {
   'Solicitud pendiente':'wip','Precio recibido':'wip','Validando operación':'wip','Orden rechazada':'ko','Rechazada en mercado':'ko',
-  'Confirmada en mercado':'warn','Ejecutando':'wip','Rechazada':'ko','Orden enviada a mercado':'mkt','Ejecutada':'ok','Orden cancelada':'mkt',
+  'Confirmada en mercado':'warn','Precio expirado':'warn','Ejecutando':'wip','Rechazada':'ko','Orden enviada a mercado':'mkt','Ejecutada':'ok','Orden cancelada':'mkt',
   'Precio alcanzado':'warn','Notificada':'ok'
 };
 const wait = ms => new Promise(r=>setTimeout(r,ms));

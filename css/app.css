@@ -306,3 +306,6 @@ input.req,.tile .amt.req{border-color:var(--down)!important;box-shadow:0 0 0 3px
 .tile .obsrow{padding:5px 10px;gap:8px;background:var(--bg-soft)}
 .tile .obsrow .lbl{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);font-family:var(--mono);font-weight:600}
 .tile .obsrow input{flex:1;min-width:0;height:24px;font-size:11.5px;padding:0 8px;background:var(--bg-panel)}
+/* P-008: precio caducado → precio atenuado, Aceptar fuera, Solicitar como acción principal */
+.tile.ticket.expired .tk .final span,.tile.ticket.expired [data-spotT],.tile.ticket.expired [data-finalspot],.tile.ticket.expired [data-contra]{opacity:.35;text-decoration:line-through;text-decoration-color:var(--ink-3)}
+.tile.ticket.expired .tk .final small::after{content:' · expirado';color:var(--warn)}
