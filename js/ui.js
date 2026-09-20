@@ -24,7 +24,7 @@ export function parseAmount(str){
 // ---------- toasts ----------
 let toastBox;
 export function toast(msg, type=''){
-  toastBox ??= (()=>{ const b=h('<div class="toasts"></div>'); document.body.appendChild(b); return b; })();
+  toastBox ??= (()=>{ const b=h('<div class="toasts" role="status" aria-live="polite"></div>'); document.body.appendChild(b); return b; })();
   const t = h(`<div class="toast ${type}">${esc(msg)}</div>`); toastBox.appendChild(t);
   setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 4200);
 }
@@ -40,7 +40,12 @@ export function modal({title, body, actions=[], width, onClose}){
   for(const a of actions){ const b = h(`<button class="btn ${a.cls||'btn-ghost'}">${esc(a.label)}</button>`); b.onclick = ()=>a.onClick?.(api); if(a.id) b.dataset.id=a.id; mf.appendChild(b); }
   $('[data-x]', bg).onclick = api.close;
   bg.addEventListener('mousedown', e=>{ if(e.target===bg && !api.sticky) api.close(); });
-  document.body.appendChild(bg); return api;
+  const onKey = e => { if(e.key==='Escape' && document.body.contains(bg)){ e.stopPropagation(); api.close(); } };
+  document.addEventListener('keydown', onKey); const _close = api.close; api.close = ()=>{ document.removeEventListener('keydown', onKey); _close(); };
+  bg.querySelector('.modal').setAttribute('role','dialog'); bg.querySelector('.modal').setAttribute('aria-modal','true'); bg.querySelector('.modal').setAttribute('aria-label', title);
+  document.body.appendChild(bg);
+  const first = bg.querySelector('.m-body input:not([disabled]), .m-body select, .m-body button, .m-foot button'); first?.focus();
+  return api;
 }
 
 // ---------- menú contextual ----------

@@ -38,10 +38,10 @@ function enter(ch){
   const cbs = { onLogout(){ if(confirm('¿Cerrar la sesión?')) login(); }, onToggleConsole(){ con.classList.toggle('open'); }, onTheme:applyTheme };
   $('[data-x]',con).onclick=()=>con.classList.remove('open'); $('[data-clear]',con).onclick=()=>{ C.events.length=0; paintConsole(); };
   C.onLog(()=>paintConsole()); paintConsole();
-  if(ch==='WEB') mountBroker(app, user, cbs); else mountDesk(app, user, cbs);
+  if(ch==='WEB'){ document.documentElement.dataset.theme=''; /* el tema Sala es de la mesa, el cliente web siempre ve el tema claro */ mountBroker(app, user, cbs); } else mountDesk(app, user, cbs);
 }
 function paintConsole(){
   const b=$('[data-cbody]'); if(!b) return;
-  b.innerHTML = C.events.slice(0,120).map(e=>`<div class="ev"><span class="t">${e.t.toLocaleTimeString('es-ES')}</span> <span class="k ${e.kind}">${e.kind.toUpperCase()}</span> ${esc(e.title)}${e.payload&&Object.keys(e.payload).length?`<pre>${esc(JSON.stringify(e.payload,null,1)).slice(0,600)}</pre>`:''}</div>`).join('') || '<div class="ev" style="opacity:.6">Sin eventos todavía. Conecte un cliente o solicite un precio.</div>';
+  b.innerHTML = C.events.slice(0,120).map(e=>`<div class="ev"><span class="t">${e.t.toLocaleTimeString('es-ES')}</span> <span class="k ${e.kind}">${e.kind.toUpperCase()}</span> ${esc(e.title)}${e.payload&&Object.keys(e.payload).length?`<pre>${esc(JSON.stringify(e.payload,null,1).slice(0,600))}</pre>`:''}</div>`).join('') || '<div class="ev" style="opacity:.6">Sin eventos todavía. Conecte un cliente o solicite un precio.</div>';
 }
 login();

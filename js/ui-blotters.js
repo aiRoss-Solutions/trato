@@ -30,13 +30,15 @@ const COLS = {
     ['Fecha valor vto', o=>D(o.fechaValor)], ['Precio límite', o=>N(o.precioLimite, dec(o)),'num'], ['Fecha validez', o=>D(o.fechaValidez)], ['Usuario operación', o=>o.usuario], ['Canal operación', o=>o.canal]
   ],
   usuario: [
-    ['Fecha operación', o=>D(o.fechaOp)], ['Fecha ejecución', o=>D(o.fechaEjec)], ['ID Global', o=>o.idGlobal], ['Referencia', o=>o.ref||'—'], ['Nombre cliente', o=>o.clienteNombre||o.cliente],
+    ['Fecha operación', o=>D(o.fechaOp)], ['Fecha ejecución', o=>D(o.fechaEjec)], ['ID Global', o=>o.idGlobal], ['Referencia', o=>o.ref||'—'], ['Nombre cliente', o=>o.clienteNombre || C.clients().find(c=>c.id===o.cliente)?.nombre || o.cliente],
     ['Tipo orden', o=>o.tipoOrden], ['Tipo operación', o=>o.tipoOp], ['Tipo op. asociada', o=>o.asociada||'—'], ['Estado', o=>stateChip(o.estado, C.STATES),'st'], ['Par divisas', o=>o.par],
     ['Nominal compra', o=>N(legs(o).ic),'num'], ['Divisa compra', o=>legs(o).dc], ['Nominal venta', o=>N(legs(o).iv),'num'], ['Divisa venta', o=>legs(o).dv],
     ['Fecha valor', o=>D(o.fechaValor)], ['Precio cliente', o=>N(o.precioCliente, dec(o)),'num'], ['Precio oficina', o=>N(o.precioOficina, dec(o)),'num'],
     ['Markup', o=>o.markupOk?'COMPLETADO':'NO COMPLETADO'], ['Observaciones', o=>o.obs||'—'], ['Canal', o=>o.canal]
   ]
 };
+// P-005: lo que el cliente final (canal WEB) no debe ver nunca
+const SOLO_INTERNO = new Set(['Precio oficina','Usuario operación','Canal operación','Canal','Markup','Observaciones']);
 function dec(o){ try{ return o.par.includes('JPY')||o.par.includes('HUF') ? 2 : (o.par.includes('MXN')||o.par.includes('TRY')||o.par.includes('CZK')) ? 3 : 4; }catch{ return 4; } }
 
 // ---------- selección de filas por pestaña ----------
@@ -95,7 +97,7 @@ export function renderDock(root, {perms, onAction}){
   renderFilters($('.filters',root), kind, ()=>renderDock(root,{perms,onAction}));
   const body = $('.body', root);
   if(d.tab==='posicion') return renderPosicion(body);
-  const cols = (COLS[kind==='ol'||kind==='co'?'ordenes':kind]||[]).filter(c=>!d.hidden[kind+':'+c[0]]);
+  const cols = (COLS[kind==='ol'||kind==='co'?'ordenes':kind]||[]).filter(c=>!d.hidden[kind+':'+c[0]]).filter(c=> perms.verMargen || !SOLO_INTERNO.has(c[0]));
   let list = applyFilters(kind, rows(kind));
   if(!list.length){ body.innerHTML = `<div class="empty">${disabledCli && d.tab==='cliente' ? 'Seleccione un cliente para ver sus operaciones.' : 'Sin operaciones que mostrar.'}</div>`; return; }
   const tbl = h(`<table class="bl"><thead><tr><th class="rowact"></th>${cols.map(c=>`<th>${esc(c[0])}</th>`).join('')}</tr></thead><tbody></tbody></table>`);
@@ -117,7 +119,7 @@ export function renderDock(root, {perms, onAction}){
 }
 function colsMenu(e, root, opts){
   const kind = S.dock.tab==='cliente' ? S.dock.sub : S.dock.tab; if(kind==='posicion') return;
-  const cols = COLS[kind==='ol'||kind==='co'?'ordenes':kind];
+  const cols = COLS[kind==='ol'||kind==='co'?'ordenes':kind].filter(c=> opts.perms?.verMargen || !SOLO_INTERNO.has(c[0]));
   cmenu(e.clientX, e.clientY, cols.map(c=>({ label:(S.dock.hidden[kind+':'+c[0]]?'☐ ':'☑ ')+c[0], onClick(){ S.dock.hidden[kind+':'+c[0]] = !S.dock.hidden[kind+':'+c[0]]; renderDock(root, opts); } })));
 }
 function renderFilters(box, kind, rerender){

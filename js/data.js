@@ -31,8 +31,8 @@ export const RATES = {
 
 export const TENORS = [
   {k:'TOD',l:'Hoy',d:0},{k:'TOM',l:'Mañana',d:1},{k:'SPOT',l:'Spot',d:2},
-  {k:'1W',l:'1 sem',d:9},{k:'2W',l:'2 sem',d:16},{k:'1M',l:'1 mes',d:32},{k:'2M',l:'2 meses',d:62},
-  {k:'3M',l:'3 meses',d:92},{k:'6M',l:'6 meses',d:183},{k:'9M',l:'9 meses',d:275},{k:'1Y',l:'1 año',d:367}
+  {k:'1W',l:'1 sem',w:1},{k:'2W',l:'2 sem',w:2},{k:'1M',l:'1 mes',m:1},{k:'2M',l:'2 meses',m:2},
+  {k:'3M',l:'3 meses',m:3},{k:'6M',l:'6 meses',m:6},{k:'9M',l:'9 meses',m:9},{k:'1Y',l:'1 año',m:12}
 ];
 
 export const HOLIDAYS = ['2026-10-12','2026-11-01','2026-12-06','2026-12-08','2026-12-25','2027-01-01','2027-01-06'];

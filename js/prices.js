@@ -32,11 +32,15 @@ export function daysFromSpot(valueDate){
 
 // Calendario: días hábiles y festivos
 export function isBiz(d){ const k=d.toISOString().slice(0,10); return d.getDay()!==0 && d.getDay()!==6 && !HOLIDAYS.includes(k); }
-export function addBiz(d, n){ const x=new Date(d); x.setHours(12,0,0,0); let i=0; while(i<n){ x.setDate(x.getDate()+1); if(isBiz(x)) i++; } return x; }
+export function addBiz(d, n){ const x=new Date(d); x.setHours(12,0,0,0); const step=n<0?-1:1; let i=0; while(i<Math.abs(n)){ x.setDate(x.getDate()+step); if(isBiz(x)) i++; } return x; }
+export function nextBiz(d){ const x=new Date(d); x.setHours(12,0,0,0); while(!isBiz(x)) x.setDate(x.getDate()+1); return x; }
 export function tenorDate(k){
   const t = TENORS.find(t=>t.k===k); const today=new Date(); today.setHours(12,0,0,0);
-  if(k==='TOD') return today; if(k==='TOM') return addBiz(today,1); if(k==='SPOT') return addBiz(today,2);
-  const x = new Date(today); x.setDate(x.getDate()+t.d); while(!isBiz(x)) x.setDate(x.getDate()+1); return x;
+  if(k==='TOD') return today; if(k==='TOM') return addBiz(today,1); const spot = addBiz(today,2); if(k==='SPOT') return spot;
+  const x = new Date(spot);
+  if(t.w) x.setDate(x.getDate()+7*t.w);
+  else { const dom=x.getDate(); x.setMonth(x.getMonth()+t.m); if(x.getDate()!==dom) x.setDate(0); }   // fin de mes: último día del mes destino
+  return nextBiz(x);
 }
 export function tenorFor(date){
   const spot = addBiz(new Date(),2), today=new Date(); today.setHours(12,0,0,0);
@@ -45,7 +49,7 @@ export function tenorFor(date){
   return date>spot ? 'FWD' : 'TOD';
 }
 export const iso = d => d.toISOString().slice(0,10);
-export const es = d => { const x = typeof d==='string'? new Date(d+'T12:00:00') : d; return x.toLocaleDateString('es-ES'); };
+export const es = d => { const x = typeof d==='string'? new Date(d+'T12:00:00') : d; return x.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}); };
 
 // Random walk. Cada tick mueve el mid y notifica a los suscriptores.
 function tick(){

@@ -309,3 +309,41 @@ input.req,.tile .amt.req{border-color:var(--down)!important;box-shadow:0 0 0 3px
 /* P-008: precio caducado → precio atenuado, Aceptar fuera, Solicitar como acción principal */
 .tile.ticket.expired .tk .final span,.tile.ticket.expired [data-spotT],.tile.ticket.expired [data-finalspot],.tile.ticket.expired [data-contra]{opacity:.35;text-decoration:line-through;text-decoration-color:var(--ink-3)}
 .tile.ticket.expired .tk .final small::after{content:' · expirado';color:var(--warn)}
+
+/* ===== P-016: foco visible en los lados de precio (operables con teclado) ===== */
+.tile .side:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;background:var(--bg-soft)}
+
+/* ===== P-017: toasts por encima de la chapa de entorno; etiquetas del bróker sin recortes ===== */
+.toasts{bottom:48px}
+.b-top .acct{min-width:0;flex:1 1 170px;max-width:260px}
+.b-top .acct label,.b-top .acct .bal{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.b-top .acct select{width:100%;text-overflow:ellipsis}
+.b-main{overflow:auto}
+.b-left{min-height:320px}
+
+/* ===== P-009: responsive — login en una columna y bróker apilado por debajo de 900 px ===== */
+@media (max-width: 900px){
+  #login{grid-template-columns:1fr;min-height:auto}
+  #login .brand-side{padding:28px 20px;gap:18px}
+  #login .brand-side h1{font-size:30px}
+  #login .form-side{padding:24px 20px}
+  .channel .ch-code{width:52px}
+  .broker{height:auto;min-height:100vh;grid-template-rows:auto auto auto;overflow:visible}
+  .b-top{flex-wrap:wrap;gap:8px;padding:8px 12px}
+  .b-top .acct{flex:1 1 45%;max-width:none;padding:4px 8px;border-left:0}
+  .b-top .seg{order:10}
+  .b-main{display:flex;flex-direction:column;gap:12px;padding:12px;overflow:visible}
+  .b-main.pro{display:flex}
+  .b-right{order:1;overflow:visible}
+  .b-right .card[data-opmod]{order:-1}          /* primero el módulo de operación */
+  .b-left{order:2;min-height:0;display:flex;flex-direction:column}
+  .b-left .card{min-height:240px}
+  .rates{grid-template-columns:1fr}
+  .pro-grid{grid-template-columns:1fr;overflow:visible}
+  .b-foot{flex-wrap:wrap;gap:8px 14px;position:sticky;bottom:0}
+  .dock .tabs{overflow-x:auto;white-space:nowrap}
+  .dock .tabs .sub{margin-left:4px;padding-left:4px}
+  .bl{font-size:11px}
+  .modal{width:96vw!important;max-height:94vh}
+  .two{grid-template-columns:1fr!important}
+}

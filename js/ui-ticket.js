@@ -160,18 +160,22 @@ export function openOrderBoleta({perms, onDone}){
   const m = modal({ title:'Orden limitada · Call order · Aviso', body, width:860, actions:[
     {label:'Cancelar', onClick:a=>a.close()}, {label:'Nueva operación', id:'new', cls:'btn-ghost', onClick(){ reset(); }}, {label:'Aceptar', id:'ok', cls:'btn-primary', onClick(){ accept(); }} ] });
   const q = s => $(s, body); let calc = null, draft = null;
+  const btnNew = $('[data-id=new]', m.foot), btnOk = $('[data-id=ok]', m.foot);
+  const syncButtons = () => { if(btnNew) btnNew.style.display = draft ? '' : 'none'; if(btnOk) btnOk.disabled = !draft; };
+  syncButtons();
   q('[data-pair]').onchange = ()=>{ const p=q('[data-pair]').value; const en = !!p; $$('select,input', body).forEach(i=>{ if(i!==q('[data-pair]')) i.disabled=!en; });
     if(p){ const [b,qq]=p.split('/'); q('[data-div]').innerHTML=`<option>${qq}</option><option>${b}</option>`; q('[data-lim]').step = PX.pip(p); q('[data-fv]').value = PX.iso(PX.tenorDate('SPOT')); q('[data-fval]').value = PX.iso(PX.addBiz(new Date(),5)); }
     q('[data-sol]').disabled = !en; };
   q('[data-fv]').onchange = ()=>{ const dt=new Date(q('[data-fv]').value+'T12:00:00'); q('[data-tord]').value = PX.tenorFor(dt)==='FWD'?'FORWARD':'CONTADO'; };
   q('[data-tord]').onchange = ()=>{ if(q('[data-tord]').value==='FORWARD' && PX.tenorFor(new Date(q('[data-fv]').value+'T12:00:00'))!=='FWD'){ q('[data-fv]').value = PX.iso(PX.tenorDate('1M')); } };
-  function reset(){ $$('select,input', body).forEach(i=>{ i.value=''; i.disabled=true; }); q('[data-pair]').disabled=false; q('[data-calc]').className='empty'; q('[data-calc]').innerHTML='Complete la boleta y pulse Solicitar.'; calc=null; draft=null; }
+  function reset(){ $$('select,input', body).forEach(i=>{ i.value=''; i.disabled=true; }); q('[data-pair]').disabled=false; q('[data-calc]').className='empty'; q('[data-calc]').innerHTML='Complete la boleta y pulse Solicitar.'; calc=null; draft=null; syncButtons(); }
   q('[data-clear]').onclick = reset;
   q('[data-sol]').onclick = ()=>{
     const pair=q('[data-pair]').value, divOp=q('[data-div]').value, nominal=parseAmount(q('[data-nom]').value), dir=q('[data-dir]').value, tipoOrden=q('[data-tord]').value, tipo=q('[data-tipo]').value;
     const fv=q('[data-fv]').value, fval=q('[data-fval]').value, lim=parseFloat(q('[data-lim]').value);
-    if(!nominal||!fv||!fval||!lim){ toast('Complete nominal, fechas y precio límite.','err'); return; }
-    const errs = C.validatePreTrade({ client, ctx:S.ctx, pair, dir, divOp, nominal, tipoOrden, valueDate:new Date(fv+'T12:00:00'), observaciones:'x', tipoOperacion: tipoOrden==='FORWARD'?'SEGURO DE CAMBIO':'CONVERSIÓN' });
+    if(!(nominal>0)||!fv||!fval||!(lim>0)){ toast('Complete nominal (mayor que cero), fechas y precio límite.','err'); return; }
+    if(new Date(fval+'T12:00:00') < today()){ toast('La fecha de validez no puede ser anterior a hoy.','err'); return; }
+    const errs = C.validatePreTrade({ client, ctx:S.ctx, pair, dir, divOp, nominal, tipoOrden, valueDate:new Date(fv+'T12:00:00'), observaciones:q('[data-obs]').value, tipoOperacion: tipoOrden==='FORWARD'?'SEGURO DE CAMBIO':'CLAVE DE ARBITRAJE' });
     if(errs.length){ toast(errs[0],'err'); return; }
     const pt = PX.tradingPrice(pair); const b = C.buildPrice({ pair, dir, divOp, pt, valueDate: tipoOrden==='FORWARD'? new Date(fv+'T12:00:00'):null, marginPorMil:C.clientMarginPorMil(client, tipoOrden==='FORWARD'?'fwd':'spot') });
     const d = PX.dec(pair);
@@ -185,7 +189,7 @@ export function openOrderBoleta({perms, onDone}){
     draft = { idGlobal:C.nextGlobalId(), cliente:client.id, clienteNombre:client.nombre, canal:S.user.canal, usuario:S.user.user, tipoOrden, tipoOp:tipo, par:pair, dir, divOp, nominal, contra:C.contravalor(pair,nominal,divOp,lim),
       precioLimite:lim, precioOficina:+(lim - b.sign*b.spotPips*b.pipv).toFixed(d), fechaOp:PX.iso(today()), fechaValor:fv, fechaValidez:fval, obs:q('[data-obs]').value, estado:'Solicitud pendiente', origen:'trato', clientBuysBase:b.clientBuysBase,
       cuenta: tipoOrden==='FORWARD'? S.ctx.linea?.n : S.ctx.cargo?.n, comision:calc.com, cuentaComision:cuentaComision(), markupOk:true, spotPips:b.spotPips, fwdPips:b.fwdPips, beneficio:benef };
-    q('[data-calc]').className=''; q('[data-calc]').innerHTML = `<div class="kv-grid">
+    syncButtons(); q('[data-calc]').className=''; q('[data-calc]').innerHTML = `<div class="kv-grid">
       <div class="kv"><span>IdGlobal</span><span>${draft.idGlobal}</span></div><div class="kv"><span>Estado</span><span>${stateChip('Solicitud pendiente',C.STATES)}</span></div>
       <div class="kv"><span>Precio trading (límite que viaja al proveedor)</span><span>${fmtN(draft.precioOficina,d)}</span></div><div class="kv"><span>Puntos forward</span><span>${tipoOrden==='FORWARD'?fmtN(b.ptsCliente/b.pipv,1)+' pts':'—'}</span></div>
       <div class="kv"><span>Spot pips</span><span>${fmtN(b.spotPips,1)}</span></div><div class="kv"><span>Fwd pips</span><span>${fmtN(b.fwdPips,1)}</span></div>
@@ -237,7 +241,7 @@ export function openAnticipo(op, {perms, onDone}){
     q('[data-po]').textContent=fmtN(a.precioOficina,d); q('[data-pts]').textContent=fmtN(a.ptsSwap/PX.pip(op.par),1)+' pts'; q('[data-sp]').textContent=fmtN(spotPips,1); q('[data-fp]').textContent=fmtN(fwdPips,1);
     q('[data-bn]').textContent=fmtN(benef,2)+' €'; q('[data-pc]').textContent=fmtN(pc,d);
   }
-  q('[data-sol]').onclick = ()=>{ const imp=parseAmount(q('[data-imp]').value); if(!imp||imp>pend){ toast('Importe inválido o superior al pendiente.','err'); return; }
+  q('[data-sol]').onclick = ()=>{ const imp=parseAmount(q('[data-imp]').value); if(!(imp>0)||imp>pend){ toast(`Indique un importe entre 0 y ${fmtN(pend,2)} ${op.divOp} (pendiente).`,'err'); return; }
     q('[data-res]').classList.remove('hide'); q('[data-st]').innerHTML=stateChip('Precio recibido',C.STATES); paint();
     if(!flex){ rfs?.close(); rfs = PX.openRFS(op.par, ()=>{ if(!frozen) paint(); }); } else { $$('.pm',body).forEach(b=>b.disabled=true); } };
   $$('[data-pm]',body).forEach(b=>b.onclick=()=>{ if(!perms.markup||frozen||!last) return; override=(override??last.spotPips)+(+b.dataset.pm); if(override<0) override=0; paint(); });
@@ -284,7 +288,7 @@ export function openCancelacion(op, {perms, onDone}){
     q('[data-a-po]').textContent=fmtN(a.precioOficina,d); q('[data-a-pts]').textContent=fmtN(a.ptsSwap/pipv,1)+' pts'; q('[data-a-sp]').textContent=fmtN(aSp,1); q('[data-a-fp]').textContent=fmtN(Math.abs(a.ptsSwap)*0.1/pipv,1); q('[data-a-bn]').textContent=fmtN(imp*Math.abs(aPc-a.precioOficina)/aPc,2)+' €'; q('[data-a-pc]').textContent=fmtN(aPc,d);
     q('[data-c-po]').textContent=fmtN(b.spotT,d); q('[data-c-pts]').textContent=fmtN(b.ptsCliente/pipv,1)+' pts'; q('[data-c-sp]').textContent=fmtN(b.spotPips,1); q('[data-c-fp]').textContent=fmtN(b.fwdPips,1); q('[data-c-bn]').textContent=fmtN(benef,2)+' €'; q('[data-c-pc]').textContent=fmtN(cPc,d);
   }
-  q('[data-sol]').onclick=()=>{ const imp=parseAmount(q('[data-imp]').value); if(!imp||imp>pend){ toast('Importe inválido o superior al pendiente.','err'); return; } q('[data-res]').classList.remove('hide'); q('[data-st]').innerHTML=stateChip('Precio recibido',C.STATES); paint(); rfs?.close(); rfs=PX.openRFS(op.par,()=>{ if(!frozen) paint(); }); };
+  q('[data-sol]').onclick=()=>{ const imp=parseAmount(q('[data-imp]').value); if(!(imp>0)||imp>pend){ toast(`Indique un importe entre 0 y ${fmtN(pend,2)} ${op.divOp} (pendiente).`,'err'); return; } q('[data-res]').classList.remove('hide'); q('[data-st]').innerHTML=stateChip('Precio recibido',C.STATES); paint(); rfs?.close(); rfs=PX.openRFS(op.par,()=>{ if(!frozen) paint(); }); };
   $$('[data-pm]',body).forEach(b=>b.onclick=()=>{ if(!perms.markup||frozen||!last) return; override=(override??last.c.sp)+(+b.dataset.pm); if(override<0) override=0; paint(); });
   async function accept(){
     if(!last){ toast('Pulse Solicitar primero.','err'); return; } frozen=true; rfs?.close();
@@ -315,7 +319,23 @@ export function openCancelGenerica(op, {onDone}){
     <div class="kv-grid"><div class="kv"><span>IdGlobal</span><span>${esc(op.idGlobal)}</span></div><div class="kv"><span>Par</span><span>${esc(op.par)}</span></div><div class="kv"><span>${op.dir} ${op.divOp}</span><span>${fmtN(op.nominal,2)}</span></div><div class="kv"><span>Precio</span><span>${fmtN(op.precioCliente, PX.dec(op.par))}</span></div></div>`,
     actions:[ {label:'Cancelar', onClick:a=>a.close()}, {label:'Aceptar', cls:'btn-primary', onClick(a){ C.updateOp(op,{estado:'Orden cancelada'}); C.sendDO2(op); toast('Operación genérica cancelada. Pendiente de alta del cliente real en el core.','ok'); onDone?.(); a.close(); }} ] });
 }
-export function masInfo(op){
-  const rows = Object.entries(op).filter(([k,v])=>v!==null && v!==undefined && typeof v!=='object').map(([k,v])=>`<div class="kv"><span>${esc(k)}</span><span>${esc(typeof v==='number'? fmtN(v, Number.isInteger(v)?0:4):v)}</span></div>`).join('');
-  modal({ title:`Operación ${op.ref||op.idGlobal}`, width:760, body:`<div class="kv-grid" style="grid-template-columns:1fr 1fr 1fr">${rows}</div>`, actions:[{label:'Cerrar', onClick:a=>a.close()}] });
+export function masInfo(op, {perms}={}){
+  // P-017/B-01: detalle con diseño; P-005: el cliente web no ve datos internos (margen, oficina, usuario, canal)
+  const interno = perms ? !!perms.verMargen : true; const d = PX.dec(op.par); const [base,quote] = op.par.split('/'); const oth = op.divOp===base?quote:base;
+  const F = v => v===undefined||v===null||v===''? '—' : v; const Dt = v => v ? PX.es(v) : '—'; const Nn=(v,dd=2)=> v===undefined||v===null? '—' : fmtN(v,dd);
+  const kv = (l,v,mono=true) => `<div class="kv"><span>${l}</span><span class="${mono?'mono':''}">${v}</span></div>`;
+  const grp = (t, rows) => rows.length? `<div class="box"><h3>${t}</h3><div class="kv-grid">${rows.join('')}</div></div>` : '';
+  const g1 = [ kv('Referencia', esc(F(op.ref))), kv('IdGlobal', esc(F(op.idGlobal))), kv('Tipo de orden', esc(F(op.tipoOrden)),false), kv('Tipo de operación', esc(F(op.tipoOp)),false),
+    op.asociada? kv('Operación asociada', esc(op.asociada)) : '', op.pata? kv('Pata enlazada', esc(op.pata)) : '', kv('Estado', stateChip(op.estado, C.STATES), false), op.motivo? kv('Motivo', esc(op.motivo), false):'',
+    ...(interno? [kv('Canal', esc(F(op.canal))), kv('Usuario', esc(F(op.usuario)))] : []) ];
+  const g2 = [ kv(`${esc(op.dir)} ${esc(op.divOp)}`, Nn(op.nominal)), kv(`Contravalor ${esc(oth)}`, Nn(op.contra)), kv('Precio cliente', Nn(op.precioCliente,d)),
+    ...(interno? [kv('Precio oficina', Nn(op.precioOficina,d))] : []), op.precioLimite? kv('Precio límite', Nn(op.precioLimite,d)) : '', op.liquidacion!==undefined? kv('Liquidación por diferencias', Nn(op.liquidacion)) : '',
+    op.dispon!==undefined? kv('Importe pendiente', Nn(op.dispon)) : '', kv('Comisión', op.comision!==undefined? Nn(op.comision)+' €':'—'), op.cuentaComision? kv('Cuenta de comisión', esc(op.cuentaComision)) : '' ];
+  const g3 = [ kv('Fecha operación', Dt(op.fechaOp)), kv('Fecha valor', Dt(op.fechaValor)), op.fechaArbitraje? kv('Fecha arbitraje', Dt(op.fechaArbitraje)) : '', op.fechaValidez? kv('Fecha validez', Dt(op.fechaValidez)) : '',
+    op.fechaDispEstandar? kv('Disponibilidad estándar', Dt(op.fechaDispEstandar)) : '', op.fechaDispCliente? kv('Disponibilidad cliente', Dt(op.fechaDispCliente)) : '', kv('Fecha ejecución', Dt(op.fechaEjec)), kv('Hora ejecución', esc(F(op.hora))) ];
+  const g4 = interno ? [ kv('Spot pips', Nn(op.spotPips,1)), kv('Fwd pips', Nn(op.fwdPips,1)), op.ptsFwd!==undefined? kv('Puntos fwd (precio)', Nn(op.ptsFwd/PX.pip(op.par),1)) : '', kv('Beneficio estimado', op.beneficio!==undefined? Nn(op.beneficio)+' €':'—'),
+    kv('Mark-up', op.markupOk===false? '<span class="st warn">NO COMPLETADO</span>' : '<span class="st ok">COMPLETADO</span>', false), op.obs? kv('Observaciones', esc(op.obs), false) : '', kv('Origen', esc(op.origen==='core'?'alta en el core (back-to-front)':'plataforma'), false) ] : [];
+  const g5 = [ kv('Cuenta operativa', esc(F(op.cuenta))), op.cuenta2? kv('Cuenta operativa 2', esc(op.cuenta2)) : '' ];
+  const body = `<div class="two">${grp('Operación', g1.filter(Boolean))}${grp('Importes y precios', g2.filter(Boolean))}</div><div class="two" style="margin-top:14px">${grp('Fechas', g3.filter(Boolean))}${grp(interno?'Márgenes y mark-up':'Cuentas', interno? g4.filter(Boolean) : g5.filter(Boolean))}</div>${interno? `<div style="margin-top:14px">${grp('Cuentas', g5.filter(Boolean))}</div>`:''}`;
+  modal({ title:`${esc(op.tipoOp)} · ${esc(op.ref||op.idGlobal)} · ${esc(op.par)}`, width:860, body, actions:[{label:'Cerrar', cls:'btn-primary', onClick:a=>a.close()}] });
 }

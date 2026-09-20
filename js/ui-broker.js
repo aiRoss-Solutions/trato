@@ -63,6 +63,9 @@ function renderMain(){
   } else {
     main.innerHTML = `<div style="display:grid;grid-template-rows:auto 1fr;gap:12px;min-height:0"><div class="pro-grid" data-pro></div><div class="card" style="display:flex;flex-direction:column;min-height:0"><div class="c-h">Operaciones</div><div class="dock" data-blotter style="height:auto;flex:1;border-top:0"></div></div></div>`;
     const pro = $('[data-pro]',main); modules = [];
+    // P-017: la vista profesional también lleva el panel de precios
+    const ratesCard = h(`<div class="card" style="grid-column:1/-1"><div class="c-h">Precios <span style="flex:1"></span><select data-rdate class="small" style="height:24px;padding:0 6px">${TENORS.map(t=>`<option value="${t.k}" ${t.k==='SPOT'?'selected':''}>${t.l}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" data-addccy>Añadir divisas</button></div><div class="rates" data-rates></div></div>`);
+    pro.appendChild(ratesCard); renderRates();
     for(let i=0;i<3;i++){ const card=h('<div class="card"></div>'); pro.appendChild(card); renderOpModule(card,i); }
     const add=h('<div class="card" style="display:grid;place-items:center;min-height:200px;border-style:dashed;color:var(--ink-3);font-size:34px;cursor:pointer">+</div>'); add.onclick=()=>{ const card=h('<div class="card"></div>'); pro.insertBefore(card, add); renderOpModule(card, modules.length); }; pro.appendChild(add);
     renderBlotter();
@@ -167,7 +170,7 @@ function renderOpModule(card, idx){
   paint();
 }
 function renderBlotter(){ const d=q('[data-blotter]'); if(!d) return; S.dock.tab = S.dock.tab==='usuario' ? 'cliente' : S.dock.tab;
-  renderDock(d, { perms, onAction(action,op){ if(action==='cancelar') openCancelacion(op,{perms,onDone:renderBlotter}); else if(action==='cancelarOrden'){ C.cancelOrder(op); toast('Orden cancelada.','ok'); } else if(action==='masInfo') masInfo(op); else if(action==='anticipar') toast('El anticipo se solicita a través de su gestor.','err'); } });
+  renderDock(d, { perms, onAction(action,op){ if(action==='cancelar') openCancelacion(op,{perms,onDone:renderBlotter}); else if(action==='cancelarOrden'){ C.cancelOrder(op); toast('Orden cancelada.','ok'); } else if(action==='masInfo') masInfo(op,{perms}); else if(action==='anticipar') toast('El anticipo se solicita a través de su gestor.','err'); } });
   const t=$('[data-tab="usuario"]',d); if(t) t.remove(); }
 function renderFoot(){
   const f=q('[data-foot]'); if(!f) return;

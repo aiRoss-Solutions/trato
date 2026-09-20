@@ -78,7 +78,7 @@ function renderPretrade(){
   q('[data-pretrade]').innerHTML =
     kv('ID Persona', g?'—':esc(c.id)) + kv('Tutor', g?'—':esc(c.tutor)) + kv('Saldo cuenta origen', g||!ctx.cargo?'—':fmtN(ctx.cargo.saldo,2)+' '+ctx.cargo.div) +
     kv('Límite línea seguro cambio', g||!ctx.linea?'—':fmtN(ctx.linea.disp,2)+' '+ctx.linea.div) + kv('Estado MiFID', mifid) + kv('Titular MiFID', g?'—':esc(c.titularMifid)) +
-    kv('Código LEI', g?'—':(c.lei==='—'?'No':'Sí')) + kv('Fecha renovación LEI', g||c.leiRenov==='—'?'—':PX.es(c.leiRenov)) + kv('Email cliente', g?'—':esc(c.email)) +
+    kv('Código LEI', g?'—':(c.lei==='—'?'Sin LEI':`<span class="mono">${esc(c.lei)}</span>`)) + kv('Fecha renovación LEI', g||c.leiRenov==='—'?'—':PX.es(c.leiRenov)) + kv('Email cliente', g?'—':esc(c.email)) +
     kv('Teléfono', g?'—':esc(c.tel)) + kv('Ordenante', g||!ctx.ordenante?'—':esc(ctx.ordenante.nombre)+(ctx.ordenante.mifid==='ok'?' <span class="dot ok"></span>':' <span class="dot warn"></span>')) +
     kv(c&&!g&&c.margenPersonalizado?'Margen personalizado':'Margen (‰)', c&&!g&&c.margenPersonalizado?'Sí':margen);
 }
@@ -106,8 +106,8 @@ function renderTile(t, i, flex){
       <span class="grow" style="flex:1"></span>${flex?'':'<button class="icon-btn close" data-close>✕</button>'}</div>
     <div class="t-row obsrow"><span class="lbl">Obs.</span><input data-obs placeholder="${t.tipo==='OTROS'&&C.cfg.obsObligatorias?'Motivo / observaciones · obligatorio en claves de arbitraje':'Observaciones (opcional)'}" value="${esc(t.obs)}"></div>
     <div class="prices">
-      <div class="side" data-side="COMPRAR"><div class="lbl"><b>COMPRAR ${esc(t.divOp)}</b><span>▾</span></div><div class="px" data-px="COMPRAR">—</div></div>
-      <div class="side" data-side="VENDER"><div class="lbl"><b>VENDER ${esc(t.divOp)}</b><span>▾</span></div><div class="px" data-px="VENDER">—</div></div>
+      <div class="side" data-side="COMPRAR" role="button" tabindex="0" aria-label="Comprar ${esc(t.divOp)}: solicitar precio"><div class="lbl"><b>COMPRAR ${esc(t.divOp)}</b><span>▾</span></div><div class="px" data-px="COMPRAR">—</div></div>
+      <div class="side" data-side="VENDER" role="button" tabindex="0" aria-label="Vender ${esc(t.divOp)}: solicitar precio"><div class="lbl"><b>VENDER ${esc(t.divOp)}</b><span>▾</span></div><div class="px" data-px="VENDER">—</div></div>
     </div>
     <div class="t-row"><button class="swap" data-swap title="Operar en ${esc(oth)}">⇄ ${esc(t.divOp)}</button><input class="amt" data-amt placeholder="0 · 30K · 6M" value="${t.amount?fmtN(t.amount,0):''}"></div>
     ${flex?`<div class="t-row"><span class="tiny muted">FDE</span><span class="mono small" data-fde>${PX.es(C.fdeFor(t.valueDate))}</span><span class="tiny muted" style="margin-left:10px">FDC</span><input type="date" data-fdc value="${PX.iso(t.fdc)}" min="${PX.iso(C.fdeFor(t.valueDate))}" max="${PX.iso(t.valueDate)}" style="height:24px;padding:0 6px"></div>`:''}
@@ -121,11 +121,12 @@ function renderTile(t, i, flex){
   const amt = $('[data-amt]',el); amt.onblur = ()=>{ t.amount = parseAmount(amt.value); amt.value = t.amount? fmtN(t.amount,0):''; }; amt.onkeydown = e=>{ if(e.key==='Enter'){ amt.blur(); } };
   $('[data-date]',el).onchange = e=>{ const dt=new Date(e.target.value+'T12:00:00'); if(!PX.isBiz(dt)){ toast('Fecha no hábil. Se ajusta al siguiente día hábil.'); e.target.value=PX.iso(PX.addBiz(dt,1)); return $('[data-date]',el).onchange(e); } t.valueDate=dt; t.tenor=PX.tenorFor(dt); if(flex){ t.fdc=null; } renderCenter(); };
   $('[data-tenor]',el).onchange = e=>{ t.tenor=e.target.value; t.valueDate=PX.tenorDate(t.tenor); if(flex) t.fdc=null; renderCenter(); };
-  $('[data-fdc]',el)?.addEventListener('change', e=>{ t.fdc = new Date(e.target.value+'T12:00:00'); });
+  $('[data-fdc]',el)?.addEventListener('change', e=>{ let x=new Date(e.target.value+'T12:00:00'); if(!PX.isBiz(x)){ x=PX.nextBiz(x); e.target.value=PX.iso(x); toast('Fecha de disponibilidad no hábil: se ajusta al siguiente día hábil.'); } t.fdc = x; });
   $$('[data-side]',el).forEach(s=>s.onclick=()=>{ if(!S.client){ toast('Seleccione un cliente.','err'); $('[data-cli]').focus(); return; } if(!t.amount){ toast('Indique un importe antes de solicitar precio.','err'); amt.classList.add('req'); amt.focus(); return; }
     const obsIn = $('[data-obs]',el); const esClave = t.tipo==='OTROS' && S.mode!=='FLEX' && PX.tenorFor(t.valueDate||PX.tenorDate(t.tenor))!=='FWD';
     if(C.cfg.obsObligatorias && esClave && !t.obs.trim()){ toast('Indique el motivo en «Observaciones»: obligatorio en claves de arbitraje (trazabilidad). Se puede relajar en Menú → Demo.','err'); obsIn.classList.add('req'); obsIn.focus(); return; }
     openTicket(el, t, s.dataset.side, { perms, onDone:()=>renderCenter() }); });
+  $$('[data-side]',el).forEach(sd=>sd.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); sd.click(); } }));
   $('[data-obs]',el).addEventListener('input', e=>e.target.classList.remove('req')); amt.addEventListener('input', ()=>amt.classList.remove('req'));
   return el;
 }
@@ -176,7 +177,7 @@ function renderDockNow(){
     else if(action==='cancelarOrden'){ C.cancelOrder(op); toast('Orden cancelada.','ok'); }
     else if(action==='completarMarkup'){ C.completeMarkup(op).then(()=>toast('Markup completado. Operación enviada al core.','ok')); }
     else if(action==='cancelarGenerica') openCancelGenerica(op,{onDone:renderDockNow});
-    else if(action==='masInfo') masInfo(op);
+    else if(action==='masInfo') masInfo(op,{perms});
   }});
 }
 

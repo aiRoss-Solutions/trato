@@ -5,7 +5,7 @@ import * as PX from './prices.js';
 
 let idSeq = 500000120; let refSeq = 100400;
 export const nextGlobalId = () => String(idSeq++);
-export const nextRef = () => String(refSeq++);
+export const nextRef = (o) => `${o?.tipoOrden==='FORWARD' ? 'SC' : 'CV'}-${refSeq++}`;
 
 // ---------- consola de integración (lo que se vería pasar por los canales) ----------
 const consoleSubs = new Set(); export const events = [];
@@ -97,6 +97,7 @@ export function validatePreTrade({client, ctx, pair, dir, divOp, nominal, tipoOr
       if(!ctx.cargo || !ctx.abono) errs.push('Seleccione cuenta de cargo y de abono coherentes con el par.');
       else if(![base,quote].includes(ctx.cargo.div) || ![base,quote].includes(ctx.abono.div)) errs.push('Las cuentas de cargo/abono no corresponden a las divisas de la operación.');
       else if(ctx.cargo.div===ctx.abono.div) errs.push('Cuenta de cargo y abono no pueden ser de la misma divisa.');
+      else { const cargoAmt = divOp===ctx.cargo.div ? nominal : contravalor(pair, nominal, divOp, RATES[pair]?.mid||1); if(ctx.cargo.saldo!==undefined && cargoAmt > ctx.cargo.saldo) errs.push(`Saldo insuficiente en la cuenta de cargo ${ctx.cargo.n}: ${fmt(ctx.cargo.saldo)} ${ctx.cargo.div} disponibles, la operación necesita ${fmt(cargoAmt)} ${ctx.cargo.div}.`); }
     }
     if(ctx.linea && ctx.linea.n.startsWith('89') && tipoOperacion!=='CLAVE DE ARBITRAJE' && ctx.useLineaForSpot) errs.push('Una línea de crédito (89) solo admite forward, no contado.');
   }
@@ -161,7 +162,7 @@ export async function executeDeal(o, {onState, preErrors}){
   await wait(500);
   if(cfg.rechazosAleatorios && Math.random()<0.03){ o.motivo='Precio fuera de mercado (last look)'; set('Rechazada en mercado'); return o; }
   log('fix','proveedor: FILL', {idGlobal:o.idGlobal});
-  o.ref = o.ref || nextRef(); o.fechaEjec = PX.iso(new Date()); o.hora = new Date().toLocaleTimeString('es-ES');
+  o.ref = o.ref || nextRef(o); o.fechaEjec = PX.iso(new Date()); o.hora = new Date().toLocaleTimeString('es-ES');
   if(!o.markupOk){ set('Confirmada en mercado'); return o; }
   set('Ejecutando'); await wait(700);
   if(cfg.rechazosAleatorios && Math.random()<0.02){ o.motivo='El core rechazó el asiento'; set('Rechazada'); return o; }
@@ -184,7 +185,7 @@ export function watchOrder(o){
     if(new Date(o.fechaValidez+'T23:59:00') < new Date()){ updateOp(o,{estado:'Orden cancelada', motivo:'Vencida'}); clearInterval(h); return; }
     if(hit){
       clearInterval(h);
-      if(o.tipoOp==='ORDEN LIMITADA'){ o.fechaEjec=PX.iso(new Date()); o.hora=new Date().toLocaleTimeString('es-ES'); o.precioCliente=o.precioLimite; o.precioOficina=+px.toFixed(PX.dec(o.par)); o.tsPrecio=new Date().toISOString(); log('fix','orden limitada ejecutada por el proveedor al alcanzar el nivel',{idGlobal:o.idGlobal, nivel:lvl, mercado:o.precioOficina}); sendDO1(o); applyLinea(o); updateOp(o,{estado:'Ejecutada'}); }
+      if(o.tipoOp==='ORDEN LIMITADA'){ o.ref = o.ref || nextRef(o); o.fechaEjec=PX.iso(new Date()); o.hora=new Date().toLocaleTimeString('es-ES'); o.precioCliente=o.precioLimite; o.precioOficina=+px.toFixed(PX.dec(o.par)); o.tsPrecio=new Date().toISOString(); log('fix','orden limitada ejecutada por el proveedor al alcanzar el nivel',{idGlobal:o.idGlobal, nivel:lvl, mercado:o.precioOficina}); sendDO1(o); applyLinea(o); updateOp(o,{estado:'Ejecutada'}); }
       else { updateOp(o,{estado:'Precio alcanzado'}); setTimeout(()=>{ updateOp(o,{estado:'Notificada'}); log('core','notificación al cliente (call order / aviso)',{idGlobal:o.idGlobal, par:o.par, precio:o.precioLimite}); }, 900); }
     }
   }, 700);
@@ -195,7 +196,7 @@ export function cancelOrder(o){ const h=watchers.get(o.idGlobal); if(h) clearInt
 // ---------- forward flexible: fecha disponibilidad estándar = 20% de los días naturales ----------
 export function fdeFor(fechaVto){
   const today=new Date(); today.setHours(12,0,0,0); const days=Math.max(1,Math.round((fechaVto-today)/86400000));
-  const x=new Date(today); x.setDate(x.getDate()+Math.ceil(days*0.20)); return x;
+  const x=new Date(today); x.setDate(x.getDate()+Math.ceil(days*0.20)); return PX.nextBiz(x);
 }
 // Anticipo: precio = Fwd inicial − puntos swap (ask para importador, bid para exportador). Prototipo: lineal por días.
 export function anticipoPrice(o, newValueDate){
