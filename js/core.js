@@ -16,7 +16,7 @@ export function log(kind, title, payload){
 export const onLog = f => { consoleSubs.add(f); return ()=>consoleSubs.delete(f); };
 
 // ---------- switch (ON: cliente → core → libros; OFF: proveedor cubre en mercado) ----------
-export const cfg = { switchOn: true, obsObligatorias: true, markupModePerUser: { SALA:'both', TEL:'view', WEB:'none' } };
+export const cfg = { switchOn: true, obsObligatorias: true, rechazosAleatorios: false, markupModePerUser: { SALA:'both', TEL:'view', WEB:'none' } };
 
 // ---------- clientes ----------
 export const clients = () => CLIENTS;
@@ -90,7 +90,8 @@ export function validatePreTrade({client, ctx, pair, dir, divOp, nominal, tipoOr
   if(tipoOrden==='FORWARD'){
     if(base!=='EUR' && quote!=='EUR') errs.push('El core no admite forward si ninguna de las divisas es EUR.');
     if(!ctx.linea) errs.push('Seleccione una línea de seguro de cambio para operar a plazo.');
-    else if(ctx.linea.disp < (divOp===ctx.linea.div ? nominal : nominal*0.9)) errs.push('Límite de la línea de seguro de cambio excedido.');
+    else if(![base,quote].includes(ctx.linea.div)) errs.push(`La línea ${ctx.linea.n} es en ${ctx.linea.div} y no cubre ${pair}: elija una línea en ${base} o ${quote}.`);
+    else { const need = importeEnLinea({par:pair, divOp, nominal}, ctx.linea); if(ctx.linea.disp < need) errs.push(`Disponible insuficiente en la línea ${ctx.linea.n}: quedan ${fmt(ctx.linea.disp)} ${ctx.linea.div} y la operación consume ${fmt(need)} ${ctx.linea.div}.`); }
   } else {
     if(tipoOperacion==='CONVERSIÓN'){
       if(!ctx.cargo || !ctx.abono) errs.push('Seleccione cuenta de cargo y de abono coherentes con el par.');
@@ -103,8 +104,28 @@ export function validatePreTrade({client, ctx, pair, dir, divOp, nominal, tipoOr
   return errs;
 }
 
+// ---------- línea de seguro de cambio (89 …): consumo y restauración ----------
+const fmt = n => new Intl.NumberFormat('es-ES',{maximumFractionDigits:0}).format(n);
+export function lineaByCuenta(n){ for(const c of CLIENTS){ const l = c.lineas.find(x=>x.n===n); if(l) return l; } return null; }
+// nominal de la operación expresado en la divisa de la línea (si no coincide, se pasa por el mid del par)
+export function importeEnLinea(o, linea){
+  if(!linea) return 0; if(o.divOp===linea.div) return o.nominal;
+  const mid = RATES[o.par]?.mid || 1; return contravalor(o.par, o.nominal, o.divOp, mid);
+}
+// Se llama cuando una operación FORWARD queda Ejecutada: seguros consumen, anticipos y cancelaciones devuelven.
+export function applyLinea(o, {silent=false}={}){
+  if(o.tipoOrden!=='FORWARD' || o.lineaAplicada) return;
+  const l = lineaByCuenta(o.cuenta); if(!l) return;
+  const imp = importeEnLinea(o, l);
+  const devuelve = /ANTICIPO|CANCELACI/.test(o.tipoOp);
+  l.disp = Math.max(0, Math.min(l.limite, devuelve ? l.disp + imp : l.disp - imp));
+  o.lineaAplicada = true;
+  if(!silent) log('core', devuelve ? 'línea de seguro de cambio: importe restaurado' : 'línea de seguro de cambio: importe consumido', {linea:l.n, importe:+imp.toFixed(2), divisa:l.div, disponible:+l.disp.toFixed(2), limite:l.limite});
+}
+
 // ---------- operaciones (la "BBDD" de la plataforma) ----------
 export const ops = SEED_OPS.map(o => ({...o, idGlobal: nextGlobalId(), hora:'—', markupOk:true}));
+ops.forEach(o => { if(o.estado==='Ejecutada') applyLinea(o, {silent:true}); });   // el disponible de las líneas ya refleja lo vivo
 const opSubs = new Set(); export const onOps = f => { opSubs.add(f); return ()=>opSubs.delete(f); };
 export function notifyOps(){ for(const f of opSubs) f(); }
 export function addOp(o){ ops.unshift(o); notifyOps(); return o; }
@@ -135,17 +156,17 @@ export async function executeDeal(o, {onState, preErrors}){
   if(preErrors?.length){ o.motivo = preErrors[0]; set('Orden rechazada'); return o; }
   log('fix', `RFS aceptado → orden a mercado (${o.par} ${o.dir} ${o.divOp} ${o.nominal})`, {idGlobal:o.idGlobal, precioTrading:o.precioOficina});
   await wait(500);
-  if(Math.random()<0.03){ o.motivo='Precio fuera de mercado (last look)'; set('Rechazada en mercado'); return o; }
+  if(cfg.rechazosAleatorios && Math.random()<0.03){ o.motivo='Precio fuera de mercado (last look)'; set('Rechazada en mercado'); return o; }
   log('fix','proveedor: FILL', {idGlobal:o.idGlobal});
   o.ref = o.ref || nextRef(); o.fechaEjec = PX.iso(new Date()); o.hora = new Date().toLocaleTimeString('es-ES');
   if(!o.markupOk){ set('Confirmada en mercado'); return o; }
   set('Ejecutando'); await wait(700);
-  if(Math.random()<0.02){ o.motivo='El core rechazó el asiento'; set('Rechazada'); return o; }
-  sendDO1(o); set('Ejecutada'); return o;
+  if(cfg.rechazosAleatorios && Math.random()<0.02){ o.motivo='El core rechazó el asiento'; set('Rechazada'); return o; }
+  sendDO1(o); applyLinea(o); set('Ejecutada'); return o;
 }
 // Completar markup a posteriori: entonces sí viaja al core
 export async function completeMarkup(o){
-  o.markupOk = true; o.estado='Ejecutando'; notifyOps(); await wait(600); sendDO1(o); updateOp(o,{estado:'Ejecutada'});
+  o.markupOk = true; o.estado='Ejecutando'; notifyOps(); await wait(600); sendDO1(o); applyLinea(o); updateOp(o,{estado:'Ejecutada'});
 }
 // Órdenes limitadas / call orders / avisos: vigilancia del precio límite
 const watchers = new Map();
@@ -160,7 +181,7 @@ export function watchOrder(o){
     if(new Date(o.fechaValidez+'T23:59:00') < new Date()){ updateOp(o,{estado:'Orden cancelada', motivo:'Vencida'}); clearInterval(h); return; }
     if(hit){
       clearInterval(h);
-      if(o.tipoOp==='ORDEN LIMITADA'){ o.fechaEjec=PX.iso(new Date()); o.hora=new Date().toLocaleTimeString('es-ES'); o.precioCliente=o.precioLimite; o.precioOficina=+px.toFixed(PX.dec(o.par)); o.tsPrecio=new Date().toISOString(); log('fix','orden limitada ejecutada por el proveedor al alcanzar el nivel',{idGlobal:o.idGlobal, nivel:lvl, mercado:o.precioOficina}); sendDO1(o); updateOp(o,{estado:'Ejecutada'}); }
+      if(o.tipoOp==='ORDEN LIMITADA'){ o.fechaEjec=PX.iso(new Date()); o.hora=new Date().toLocaleTimeString('es-ES'); o.precioCliente=o.precioLimite; o.precioOficina=+px.toFixed(PX.dec(o.par)); o.tsPrecio=new Date().toISOString(); log('fix','orden limitada ejecutada por el proveedor al alcanzar el nivel',{idGlobal:o.idGlobal, nivel:lvl, mercado:o.precioOficina}); sendDO1(o); applyLinea(o); updateOp(o,{estado:'Ejecutada'}); }
       else { updateOp(o,{estado:'Precio alcanzado'}); setTimeout(()=>{ updateOp(o,{estado:'Notificada'}); log('core','notificación al cliente (call order / aviso)',{idGlobal:o.idGlobal, par:o.par, precio:o.precioLimite}); }, 900); }
     }
   }, 700);

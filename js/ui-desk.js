@@ -22,7 +22,7 @@ export function mountDesk(el, user, {onLogout, onToggleConsole, onTheme}){
     </div>
     <div class="rpanel" data-rpanel></div>`;
   renderTopbar(); renderPretrade(); renderCenter(); renderDockNow(); renderRPanel({onLogout,onToggleConsole,onTheme});
-  unsubs.forEach(f=>f()); unsubs = [ PX.subscribe(onTick), C.onOps(()=>renderDockNow()) ];
+  unsubs.forEach(f=>f()); unsubs = [ PX.subscribe(onTick), C.onOps(()=>{ renderDockNow(); renderPretrade(); }) ];
   setInterval(paintStale, 1000);
 }
 
@@ -195,6 +195,7 @@ function renderRPanel({onLogout,onToggleConsole,onTheme}){
       <button class="item" data-go="CONSOLE">Consola de integración</button>
       <div class="row"><span>Switch proveedor → libros</span><button class="switch ${C.cfg.switchOn?'on':''}" data-switch><i></i>${C.cfg.switchOn?'ON':'OFF'}</button></div>
       <div class="row"><span>Observaciones obligatorias<br><small class="muted">en claves de arbitraje</small></span><button class="switch ${C.cfg.obsObligatorias?'on':''}" data-obsreq><i></i>${C.cfg.obsObligatorias?'ON':'OFF'}</button></div>
+      <div class="row"><span>Rechazos aleatorios<br><small class="muted">last look 3 % · asiento 2 %</small></span><button class="switch ${C.cfg.rechazosAleatorios?'on':''}" data-rechazos><i></i>${C.cfg.rechazosAleatorios?'ON':'OFF'}</button></div>
       <div class="sect">Sesión</div>
       <button class="item" data-go="LOGOUT">Salir</button>
     </div><div class="p-foot">${esc(BRAND.name)} v${BRAND.version} · prototipo navegable · sin conexión real</div>`;
@@ -204,6 +205,7 @@ function renderRPanel({onLogout,onToggleConsole,onTheme}){
     else if(g==='DOCK'){ const cur=getComputedStyle(document.documentElement).getPropertyValue('--dock-h').trim(); document.documentElement.style.setProperty('--dock-h', cur==='42px'?'300px':'42px'); }
     else if(g==='CONSOLE') onToggleConsole(); else if(g==='LOGOUT') onLogout(); });
   $$('[data-theme]',p).forEach(b=>b.onclick=()=>{ onTheme(b.dataset.theme); renderRPanel({onLogout,onToggleConsole,onTheme}); });
+  $('[data-rechazos]',p).onclick=()=>{ C.cfg.rechazosAleatorios=!C.cfg.rechazosAleatorios; C.log('core',`Rechazos aleatorios ${C.cfg.rechazosAleatorios?'ON':'OFF'}`,{}); renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); };
   $('[data-obsreq]',p).onclick=()=>{ C.cfg.obsObligatorias=!C.cfg.obsObligatorias; C.log('core',`Observaciones obligatorias ${C.cfg.obsObligatorias?'ON':'OFF'}`,{}); renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); renderCenter(); toast(C.cfg.obsObligatorias?'Observaciones obligatorias en claves de arbitraje.':'Observaciones opcionales (modo demo).'); };
   $('[data-switch]',p).onclick=()=>{ C.cfg.switchOn=!C.cfg.switchOn; C.log('core',`Switch ${C.cfg.switchOn?'ON':'OFF'}`,{}); renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); };
 }

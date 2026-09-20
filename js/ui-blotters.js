@@ -162,13 +162,14 @@ function rowMenu(e, o, kind, perms, onAction){
   cmenu(e.clientX, e.clientY, items);
 }
 function renderPosicion(body){
-  const c = S.client; const list = C.ops.filter(o=>o.cliente===c.id && o.estado==='Ejecutada' && /SEGURO DE CAMBIO|ANTICIPO/.test(o.tipoOp));
-  if(!list.length){ body.innerHTML='<div class="empty">Sin posición en seguros de cambio.</div>'; return; }
+  // Posición viva = nominal pendiente de disponer de cada seguro (anticipos y cancelaciones ya descontados en `dispon`)
+  const c = S.client; const list = C.ops.filter(o=>o.cliente===c.id && o.estado==='Ejecutada' && /^SEGURO DE CAMBIO/.test(o.tipoOp) && (o.dispon ?? o.nominal) > 0);
+  if(!list.length){ body.innerHTML='<div class="empty">Sin posición viva en seguros de cambio.</div>'; return; }
   const buckets = ['≤ 1M','1M – 3M','3M – 6M','6M – 12M','> 12M'];
   const bucketOf = d => { const days=(new Date(d)-new Date())/86400000; return days<=31?0:days<=92?1:days<=183?2:days<=366?3:4; };
   const pos = {};
-  for(const o of list){ const div = o.par.split('/').find(x=>x!=='EUR')||o.divOp; const sign = (o.dir==='COMPRAR')===(o.divOp===div) ? +1 : -1; const amt = o.divOp===div ? o.nominal : o.contra; pos[div] ??= [0,0,0,0,0]; pos[div][bucketOf(o.fechaValor)] += sign*amt; }
+  for(const o of list){ const div = o.par.split('/').find(x=>x!=='EUR')||o.divOp; const sign = (o.dir==='COMPRAR')===(o.divOp===div) ? +1 : -1; const vivo = o.dispon ?? o.nominal; const amt = o.divOp===div ? vivo : o.contra * vivo/o.nominal; pos[div] ??= [0,0,0,0,0]; pos[div][bucketOf(o.fechaValor)] += sign*amt; }
   body.innerHTML = `<table class="bl"><thead><tr><th>Divisa</th>${buckets.map(b=>`<th style="text-align:right">${b}</th>`).join('')}<th style="text-align:right">Total</th></tr></thead><tbody>
     ${Object.entries(pos).map(([d,arr])=>`<tr><td><b>${d}</b></td>${arr.map(v=>`<td class="num" style="color:${v<0?'var(--down)':v>0?'var(--up)':'inherit'}">${v?fmtN(v,0):'—'}</td>`).join('')}<td class="num"><b>${fmtN(arr.reduce((a,b)=>a+b,0),0)}</b></td></tr>`).join('')}
-  </tbody></table><div class="tiny muted" style="padding:8px 10px">Signo positivo = el cliente compra la divisa · negativo = la vende. Tramos por fecha valor.</div>`;
+  </tbody></table><div class="tiny muted" style="padding:8px 10px">Signo positivo = el cliente compra la divisa · negativo = la vende. Tramos por fecha valor. Solo nominal vivo: lo anticipado y lo cancelado ya no cuenta.</div>`;
 }

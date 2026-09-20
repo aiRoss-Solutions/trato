@@ -33,7 +33,7 @@ function render(cbs){
     <div class="b-foot" data-foot></div>
   </div><div class="rpanel" data-rpanel></div>`;
   renderTop(cbs); renderMain(); renderFoot(); renderRPanel(cbs);
-  unsubs.forEach(f=>f()); unsubs=[ PX.subscribe(onTick), C.onOps(()=>renderBlotter()) ];
+  unsubs.forEach(f=>f()); unsubs=[ PX.subscribe(onTick), C.onOps(()=>{ renderBlotter(); renderTop(cbs); }) ];
   clearInterval(timer); timer = setInterval(renderFoot, 1000);
 }
 function renderTop(cbs){

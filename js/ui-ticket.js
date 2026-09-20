@@ -277,11 +277,23 @@ export function openCancelacion(op, {perms, onDone}){
   $$('[data-pm]',body).forEach(b=>b.onclick=()=>{ if(!perms.markup||frozen||!last) return; override=(override??last.c.sp)+(+b.dataset.pm); if(override<0) override=0; paint(); });
   async function accept(){
     if(!last){ toast('Pulse Solicitar primero.','err'); return; } frozen=true; rfs?.close();
-    const nop = { idGlobal:C.nextGlobalId(), cliente:op.cliente, clienteNombre:op.clienteNombre||S.client.nombre, canal:S.user.canal, usuario:S.user.user, tipoOrden:'FORWARD', tipoOp:'CANCELACIÓN', asociada:op.ref,
-      par:op.par, dir:opp, divOp:op.divOp, nominal:last.imp, contra:C.contravalor(op.par,last.imp,op.divOp,last.c.pc), precioCliente:+last.c.pc.toFixed(d), precioOficina:+last.c.po.toFixed(d), ptsFwd:last.c.pts, spotPips:last.c.sp, fwdPips:last.c.fp, beneficio:last.c.bn,
-      fechaOp:PX.iso(today()), fechaValor:PX.iso(last.nd), cuenta:op.cuenta, comision:comision(last.imp), cuentaComision:cuentaComision(), markupOk:q('[data-mk]').checked, estado:'Solicitud pendiente', origen:'trato', tsPrecio:new Date().toISOString(), clientBuysBase:last.c.cbb };
-    C.addOp(nop); await C.executeDeal(nop,{ onState:s=>{ q('[data-st]').innerHTML=stateChip(s,C.STATES); } });
-    if(nop.estado==='Ejecutada'||nop.estado==='Confirmada en mercado'){ C.updateOp(op,{ dispon: pend-last.imp }); toast(`Cancelación ${nop.ref} ${nop.estado.toLowerCase()}.`,'ok'); } else toast(nop.motivo||nop.estado,'err');
+    const common = { cliente:op.cliente, clienteNombre:op.clienteNombre||S.client.nombre, canal:S.user.canal, usuario:S.user.user, tipoOrden:'FORWARD', asociada:op.ref, par:op.par, divOp:op.divOp, nominal:last.imp,
+      fechaOp:PX.iso(today()), fechaValor:PX.iso(last.nd), cuenta:op.cuenta, cuentaComision:cuentaComision(), markupOk:q('[data-mk]').checked, origen:'trato', tsPrecio:new Date().toISOString() };
+    // Pata 1: anticipo del seguro original a la nueva fecha valor (misma dirección que el original)
+    const pataA = { ...common, idGlobal:C.nextGlobalId(), tipoOp:'CANCELACIÓN · PATA ANTICIPO', ayp:'C', dir:op.dir, contra:C.contravalor(op.par,last.imp,op.divOp,last.a.pc),
+      precioCliente:+last.a.pc.toFixed(d), precioOficina:+last.a.po.toFixed(d), ptsFwd:last.a.pts, spotPips:last.a.sp, fwdPips:Math.abs(last.a.pts)*0.1/PX.pip(op.par), beneficio:last.imp*Math.abs(last.a.pc-last.a.po)/last.a.pc, comision:0, clientBuysBase:op.clientBuysBase, estado:'Solicitud pendiente' };
+    // Pata 2: operación contraria a mercado en la misma fecha; liquida por diferencias contra la pata 1
+    const pataC = { ...common, idGlobal:C.nextGlobalId(), tipoOp:'CANCELACIÓN', ayp:'C', dir:opp, contra:C.contravalor(op.par,last.imp,op.divOp,last.c.pc),
+      precioCliente:+last.c.pc.toFixed(d), precioOficina:+last.c.po.toFixed(d), ptsFwd:last.c.pts, spotPips:last.c.sp, fwdPips:last.c.fp, beneficio:last.c.bn, comision:comision(last.imp), clientBuysBase:last.c.cbb, estado:'Solicitud pendiente',
+      liquidacion: +(C.contravalor(op.par,last.imp,op.divOp,last.c.pc) - C.contravalor(op.par,last.imp,op.divOp,last.a.pc)).toFixed(2), pata:null, lineaAplicada:true /* la línea la restaura la pata anticipo */ };
+    C.addOp(pataA); C.addOp(pataC);
+    await C.executeDeal(pataC,{ onState:s=>{ q('[data-st]').innerHTML=stateChip(s,C.STATES); } });
+    if(pataC.estado==='Ejecutada'||pataC.estado==='Confirmada en mercado'){
+      pataA.ref = pataC.ref+'-A'; pataA.fechaEjec = pataC.fechaEjec; pataA.hora = pataC.hora; pataC.pata = pataA.ref; C.updateOp(pataA,{estado:pataC.estado}); if(pataC.estado==='Ejecutada') C.applyLinea(pataA);
+      C.updateOp(op,{ dispon: pend-last.imp });
+      const liqDiv = op.divOp===op.par.split('/')[0] ? op.par.split('/')[1] : op.par.split('/')[0];
+      toast(`Cancelación ${pataC.ref} ${pataC.estado.toLowerCase()} en dos patas (${pataA.ref} anticipo + ${pataC.ref} contraria). Liquidación por diferencias: ${fmtN(pataC.liquidacion,2)} ${liqDiv}.`,'ok');
+    } else { C.updateOp(pataA,{estado:pataC.estado, motivo:pataC.motivo}); toast(pataC.motivo||pataC.estado,'err'); }
     onDone?.(); setTimeout(()=>m.close(),900);
   }
 }
