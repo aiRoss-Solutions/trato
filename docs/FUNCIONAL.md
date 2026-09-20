@@ -1,4 +1,4 @@
-# Especificación funcional — Trato v0.1
+# Especificación funcional — Trato v0.2
 
 Lo que el prototipo **simula** hoy, con las reglas que aplica. Todo corre en memoria del navegador; al recargar se pierde lo
 operado (las operaciones semilla vuelven). Los textos entre comillas son los literales que ve el usuario.
@@ -34,21 +34,24 @@ operado (las operaciones semilla vuelven). Los textos entre comillas son los lit
   `30K`, `6M`, fecha valor, tenor (TOD, TOM, SPOT, 1W…1Y) y reloj desde el último tick.
 - Precio en tiempo real: random walk sobre un mid por par, spread de trading por par. Si no hay tick en 3 s el reloj se pone
   en ámbar ("stale"). Reconexión simulada del proveedor a las 06:00.
-- Tenor > SPOT ⇒ la operación pasa a **seguro de cambio** (forward) automáticamente y muestra puntos fwd.
+- Tenores: TOD hoy, TOM y SPOT en días hábiles; 1W…1Y **desde spot** en semanas/meses de calendario, ajustados al siguiente
+  hábil. Tenor > SPOT ⇒ la operación pasa a **seguro de cambio** (forward) automáticamente y muestra puntos fwd. Fecha de arbitraje
+  = fecha valor − 1 hábil. Fechas siempre `dd/mm/aaaa`.
 - Fecha no hábil ⇒ se ajusta al siguiente hábil (fines de semana + festivos de `data.js`).
 
 ## 4. Validaciones pre-trade (antes de pedir precio)
 1. Importe > 0. 2. Cliente seleccionado. 3. Cliente **MiFID ko** ⇒ no puede operar.
 4. **Clave de arbitraje exige observaciones** (regla del sistema de referencia; conmutable en ☰ → "Observaciones obligatorias").
-5. **Forward**: una de las dos divisas debe ser EUR; hace falta línea 89 y disponible suficiente.
-6. **Conversión**: cargo y abono de las dos divisas del par y de divisas distintas.
+5. **Forward**: una de las dos divisas debe ser EUR; hace falta línea 89 **cuya divisa sea una del par** y con disponible suficiente (el nominal se compara en la divisa de la línea). Al ejecutar, la línea **se consume**; anticipos y cancelaciones la **restauran**.
+6. **Conversión**: cargo y abono de las dos divisas del par y de divisas distintas; **saldo suficiente** en la cuenta de cargo.
 7. Cliente genérico: solo claves de arbitraje.
 Cada validación queda en la consola como `core.trading.validacionPreTrade` (OK/KO y motivos).
 
 ## 5. Ticket (in-place, dentro del tile)
 - Estados visibles: *Solicitud pendiente* → *Precio recibido* (RFS de **60 s**, barra de vigencia) → *Validando operación* →
-  *Ejecutando* → **Ejecutada** (o *Rechazada en mercado* por last look ~3 %, *Rechazada* por asiento en core ~2 %,
-  *Confirmada en mercado* si falta completar mark-up).
+  *Ejecutando* → **Ejecutada** (o *Confirmada en mercado* si falta completar mark-up). A los 60 s sin aceptar: **Precio expirado**
+  (precio atenuado, Aceptar deshabilitado, *Solicitar precio* como acción principal). Los rechazos aleatorios (*Rechazada en
+  mercado* por last look ~3 %, *Rechazada* por asiento ~2 %) están **apagados por defecto**; se activan en ☰ → Rechazos aleatorios.
 - Desglose (SALA y TEL): **precio trading** (proveedor), **final spot**, **puntos fwd** (si forward), **spot pips** (mark-up
   en pips, editable con ± en SALA), **fwd pips**, **precio final**, **contravalor**, **beneficio** estimado en EUR.
   Fórmula: `PC = PT ± spread_trading ± mark-up`, mark-up = ‰ del cliente (nivel oro/plata/bronce o personalizado spot/fwd),
@@ -56,7 +59,8 @@ Cada validación queda en la consola como `core.trading.validacionPreTrade` (OK/
 - **Mark-up completado**: checkbox (SALA). Si se desmarca, la operación se ejecuta en mercado pero queda *Confirmada en
   mercado* hasta que alguien la complete desde el blotter de usuario ("Completar markup") y entonces viaja al core (DO1).
 - Botones: **Aceptar** (ejecuta), **Rechazar** (descarta el precio), **Solicitar precio** (nuevo RFS), ⇄ cambia dirección.
-- Al ejecutar: referencia, idGlobal, comisión (regla: 25 € hasta 100k, 0 a partir de 100k), cuenta de comisión;
+- Al ejecutar: referencia (`SC-` forward, `CV-` contado), idGlobal, comisión (`core.comision`: 25 € hasta 100.000, 0 después), cuenta de comisión;
+  **precio oficina** guardado = mercado a plazo (spot de trading + puntos) para que sea comparable con el precio cliente;
   **DO1** a la cola; con **switch ON** la cobertura va al sistema de tesorería, con OFF el proveedor cubre en mercado.
 - **Fwd flexible**: además fecha de disponibilidad estándar (20 % del plazo), fecha elegida por el cliente, puntos fwd de
   la FDC y puntos "flexibles".
@@ -65,21 +69,27 @@ Cada validación queda en la consola como `core.trading.validacionPreTrade` (OK/
 - Tipos: **Orden limitada** (contado o seguro de cambio), **Call order**, **Aviso**. Campos: par, divisa, nominal, dirección,
   tipo de orden, fecha valor, fecha validez, precio límite, observaciones. *Solicitar* calcula los datos (contravalor,
   fecha arbitraje si fwd) y *Aceptar* la da de alta en estado **Orden enviada a mercado**.
-- Vigilancia: cuando el precio de mercado toca el límite la orden pasa a **Ejecutada** (y se asienta), los call orders /
-  avisos a **Aviso disparado**. Caducidad por fecha de validez. Cancelable desde el blotter mientras esté viva.
+- **El límite tiene que ser mejor para el cliente que el precio actual**; si ya es alcanzable se rechaza ("opere a mercado o mejore el límite").
+- Vigilancia: se vigila el **nivel de trading** (límite del cliente sin margen); cuando el mercado lo alcanza la orden limitada pasa a
+  **Ejecutada** al precio límite (y se asienta), los call orders / avisos a **Precio alcanzado → Notificada**. Caducidad por fecha de
+  validez. Cancelable desde el blotter mientras esté viva.
 
 ## 7. Blotters (dock inferior, plegable)
 - **Operaciones del cliente**: sub-pestañas *Ejecutadas*, *Órdenes limitadas*, *Call orders / Avisos*. Columnas del sistema de
   referencia (fecha, referencia, tipo orden, tipo operación, importes compra/venta, fecha valor, precio cliente, precio
   oficina, liquidación, cuentas, fecha arbitraje, disponibilidad, ejecución, usuario, canal…).
-- **Posición en seguros de cambio**: nominal vivo por par y divisa, agregando SC, flexibles, anticipos y cancelaciones.
+- **Posición en seguros de cambio**: **nominal vivo** por divisa y tramo de fecha valor: lo anticipado y lo cancelado ya no cuenta.
 - **Operaciones del usuario**: todo lo que operó el usuario conectado, con **estado**, mark-up completado o no (fila marcada),
   idGlobal, observaciones y canal.
 - Herramientas: **filtros** (fechas, tipo, estado, importes; regla: rango máximo y "sin cliente ⇒ sin datos"), **actualizar**,
   **exportar CSV**, **columnas** visibles/ocultas, plegar.
 - Acciones por fila (⋯, clic derecho o doble clic para el detalle): **Anticipar** y **Cancelar operación** (solo sobre SC
-  vivos; la cancelación genera dos patas), **Cancelar orden** (órdenes vivas), **Completar markup**, **Cancelar operación
+  vivos; la cancelación genera **dos patas enlazadas**: `ref-A` anticipo a la nueva fecha y `ref` contraria a mercado, con
+  liquidación por diferencias), **Cancelar orden** (órdenes vivas), **Completar markup**, **Cancelar operación
   (reasignar a cliente real)** para las del genérico, **Más info** (todos los campos).
+
+- **Canal WEB**: el cliente no ve Precio oficina, Usuario, Canal, Markup ni Observaciones en ningún blotter, ni en el menú de
+  columnas, ni en el CSV, ni en el detalle.
 
 ## 8. Canal WEB (bróker de empresas)
 - Cabecera con cuentas de cargo/abono (⇄), línea 89 y saldo/límite. Vistas **Estándar** (blotter + precios + un módulo de

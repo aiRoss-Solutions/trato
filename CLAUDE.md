@@ -63,6 +63,13 @@ docs/CHANGELOG.md     qué cambió en cada versión
   (sin install, sin build command, output = `.`). `robots.txt` ya deja el entorno como no indexable.
 - Si el deploy no sale o hace falta permiso/config, **avisar a Javi, no tocar**.
 
+## Estado 20-sep-2026 · decisión vigente
+- Camilo revisó v0.1 (44 defectos, 18 peticiones; material en la carpeta Dropbox compartida). En v0.2 se implementó **todo lo
+  correctivo/heredado** (P-001…P-011, P-017, P-018, parte de P-016).
+- **Decisión de Maxi: de momento solo lo que el sistema de referencia ya tiene. Nada nuevo.** P-012…P-015 (tope mark-up,
+  trazabilidad de cotizaciones no cerradas, multibanco, explicación del precio) están **aparcadas** hasta que él lo diga.
+- Estado por petición en `docs/PETICIONES.md`.
+
 ## Cómo se pide un cambio (para Lucio, Camilo, Javi)
 - Escribir la petición en `docs/PETICIONES.md` (o en la carpeta compartida de Dropbox `peticiones/`) con la plantilla:
   **qué**, **dónde** (pantalla / canal), **por qué** (valor para el cliente o para la demo), **prioridad**.
