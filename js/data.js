@@ -70,7 +70,7 @@ export const GENERIC = { id:'GEN', nif:'—', nombre:'Cliente genérico', generi
 // Operaciones históricas "dadas de alta en el core fuera de la plataforma" (back-to-front)
 export const SEED_OPS = [
   { ref:'SC-165578', cliente:'30412877', tipoOrden:'FORWARD', tipoOp:'SEGURO DE CAMBIO', par:'EUR/USD', dir:'VENDER', divOp:'USD',
-    nominal:50000, contra:44210.5, precioCliente:1.1310, precioOficina:1.1322, fechaOp:'2026-08-20', fechaValor:'2026-12-15',
+    nominal:50000, contra:44114.70, precioCliente:1.1334, precioOficina:1.1322, fechaOp:'2026-08-20', fechaValor:'2026-12-15',
     fechaArbitraje:'2026-12-14', estado:'Ejecutada', canal:'SALA', usuario:'lbermudez', cuenta:'89 0999-2210/000301', origen:'core' },
   { ref:'SC-165590', cliente:'30412877', tipoOrden:'FORWARD', tipoOp:'SEGURO DE CAMBIO FLEXIBLE', par:'EUR/GBP', dir:'COMPRAR', divOp:'GBP',
     nominal:30000, contra:33980.2, precioCliente:0.8829, precioOficina:0.8840, fechaOp:'2026-09-01', fechaValor:'2027-02-26',
@@ -79,7 +79,7 @@ export const SEED_OPS = [
     nominal:10000, contra:8880.1, precioCliente:1.1261, precioOficina:1.1266, fechaOp:'2026-09-15', fechaValor:'2026-09-17',
     estado:'Ejecutada', canal:'WEB', usuario:'cliente', cuenta:'EUR 0999-2210-44/001101', origen:'core' },
   { ref:'SC-165601', cliente:'30588120', tipoOrden:'FORWARD', tipoOp:'SEGURO DE CAMBIO', par:'EUR/USD', dir:'VENDER', divOp:'USD',
-    nominal:120000, contra:106120.0, precioCliente:1.1308, precioOficina:1.1320, fechaOp:'2026-09-03', fechaValor:'2026-11-30',
+    nominal:120000, contra:105894.46, precioCliente:1.1332, precioOficina:1.1320, fechaOp:'2026-09-03', fechaValor:'2026-11-30',
     fechaArbitraje:'2026-11-27', estado:'Ejecutada', canal:'SALA', usuario:'lbermudez', cuenta:'89 0999-3350/000410', origen:'core' },
 ];
 

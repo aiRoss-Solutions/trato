@@ -211,7 +211,7 @@ export function openAnticipo(op, {perms, onDone}){
   const marginPorMil = C.clientMarginPorMil(S.client,'fwd');
   function paint(){
     const nd = PX.tenorDate(q('[data-fv]').value); const imp = parseAmount(q('[data-imp]').value);
-    const a = C.anticipoPrice(op, nd); const sign = op.dir==='COMPRAR' ? +1 : -1;
+    const a = C.anticipoPrice(op, nd); const sign = C.marginSign(op.par, op.dir, op.divOp);
     const spotPips = override ?? (a.precioOficina*marginPorMil/1000)/PX.pip(op.par);
     const pc = flex ? op.precioCliente : a.precioOficina + sign*spotPips*PX.pip(op.par);
     const fwdPips = Math.abs(a.ptsSwap)*0.1/PX.pip(op.par);
@@ -260,7 +260,7 @@ export function openCancelacion(op, {perms, onDone}){
   const marginPorMil = C.clientMarginPorMil(S.client,'fwd');
   function paint(){
     const nd = PX.tenorDate(q('[data-fv]').value); const imp = parseAmount(q('[data-imp]').value); const pipv = PX.pip(op.par);
-    const a = C.anticipoPrice(op, nd); const signA = op.dir==='COMPRAR'?+1:-1; const aSp = (a.precioOficina*marginPorMil/1000)/pipv; const aPc = flex? op.precioCliente : a.precioOficina + signA*aSp*pipv;
+    const a = C.anticipoPrice(op, nd); const signA = C.marginSign(op.par, op.dir, op.divOp); const aSp = (a.precioOficina*marginPorMil/1000)/pipv; const aPc = flex? op.precioCliente : a.precioOficina + signA*aSp*pipv;
     const pt = PX.tradingPrice(op.par); const b = C.buildPrice({ pair:op.par, dir:opp, divOp:op.divOp, pt, valueDate:nd, marginPorMil, markupOverridePips:override });
     const cPc = b.precioFinal; const benef = imp*Math.abs(cPc-b.spotT)/cPc;
     last = { nd, imp, a:{po:a.precioOficina, pts:a.ptsSwap, sp:aSp, pc:aPc}, c:{po:b.spotT, pts:b.ptsCliente, sp:b.spotPips, fp:b.fwdPips, pc:cPc, bn:benef, cbb:b.clientBuysBase} };

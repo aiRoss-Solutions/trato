@@ -43,9 +43,13 @@ export function clientMarginPorMil(c, kind /* 'spot'|'fwd' */){
 
 // Construcción del precio. dir = lo que hace el CLIENTE con la divisa de operación (divOp).
 // Convención: el par es BASE/QUOTE. Si divOp es la QUOTE y el cliente COMPRA quote, vende base → bid. Si VENDE quote → ask.
+// ¿El cliente compra la divisa BASE del par? (comprar la cotizada = vender la base). Único criterio para el signo del margen.
+export function clientBuysBase(pair, dir, divOp){ const [base]=pair.split('/'); return (divOp===base) ? dir==='COMPRAR' : dir==='VENDER'; }
+// Signo con el que el margen se suma al precio: +1 si el cliente compra base (paga más), -1 si la vende (cobra menos).
+export function marginSign(pair, dir, divOp){ return clientBuysBase(pair, dir, divOp) ? +1 : -1; }
+
 export function buildPrice({pair, dir, divOp, pt, valueDate, marginPorMil, markupOverridePips=null}){
-  const [base] = pair.split('/');
-  const clientBuysBase = (divOp===base) ? dir==='COMPRAR' : dir==='VENDER';
+  const clientBuysBase = marginSign(pair, dir, divOp) > 0;
   const spotT = clientBuysBase ? pt.ask : pt.bid;                 // precio trading (spot, sin margen)
   const pts = valueDate ? PX.fwdPoints(pair, valueDate) : 0;      // puntos forward de mercado
   const sign = clientBuysBase ? +1 : -1;                          // el margen siempre empeora el precio al cliente
@@ -171,6 +175,7 @@ export function fdeFor(fechaVto){
 export function anticipoPrice(o, newValueDate){
   const orig = new Date(o.fechaValor+'T12:00:00'); const days = Math.max(0, Math.round((orig-newValueDate)/86400000));
   const swap = RATES[o.par].fwdY * days/365; const half = RATES[o.par].spread*PX.pip(o.par)*0.5;
-  const ptsSwap = o.dir==='COMPRAR' ? swap+half : swap-half;
+  // medio spread siempre en contra del cliente: si compra base, el swap le cuesta más; si la vende, le pagan menos
+  const ptsSwap = marginSign(o.par, o.dir, o.divOp) > 0 ? swap+half : swap-half;
   return { precioOficina: o.precioOficina - ptsSwap, ptsSwap };
 }
