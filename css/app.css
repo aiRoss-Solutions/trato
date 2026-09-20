@@ -347,3 +347,13 @@ input.req,.tile .amt.req{border-color:var(--down)!important;box-shadow:0 0 0 3px
   .modal{width:96vw!important;max-height:94vh}
   .two{grid-template-columns:1fr!important}
 }
+/* P-009: la tabla del blotter no puede ensanchar la columna del grid; desplaza dentro de su tarjeta */
+.broker{grid-template-columns:minmax(0,1fr)}
+.broker .card,.b-left,.b-right{min-width:0;max-width:100%}
+.dock .body{overflow:auto}
+@media (max-width: 900px){
+  html,body{overflow-x:hidden}
+  .b-main>*{min-width:0;max-width:100%}
+  .form{grid-template-columns:1fr}
+  .form .field.full{grid-column:auto}
+}
