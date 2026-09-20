@@ -154,11 +154,13 @@ export function watchOrder(o){
     if(o.estado!=='Orden enviada a mercado'){ clearInterval(h); return; }
     const pt = PX.tradingPrice(o.par);
     const px = o.clientBuysBase ? pt.ask : pt.bid;
-    const hit = o.clientBuysBase ? px <= o.precioLimite : px >= o.precioLimite;
+    // se vigila el límite de TRADING (precioOficina = límite cliente sin margen), que es lo que viaja al proveedor
+    const lvl = o.precioOficina ?? o.precioLimite;
+    const hit = o.clientBuysBase ? px <= lvl : px >= lvl;
     if(new Date(o.fechaValidez+'T23:59:00') < new Date()){ updateOp(o,{estado:'Orden cancelada', motivo:'Vencida'}); clearInterval(h); return; }
     if(hit){
       clearInterval(h);
-      if(o.tipoOp==='ORDEN LIMITADA'){ o.fechaEjec=PX.iso(new Date()); o.hora=new Date().toLocaleTimeString('es-ES'); o.precioCliente=o.precioLimite; log('fix','orden limitada ejecutada por el proveedor',{idGlobal:o.idGlobal}); sendDO1(o); updateOp(o,{estado:'Ejecutada'}); }
+      if(o.tipoOp==='ORDEN LIMITADA'){ o.fechaEjec=PX.iso(new Date()); o.hora=new Date().toLocaleTimeString('es-ES'); o.precioCliente=o.precioLimite; o.precioOficina=+px.toFixed(PX.dec(o.par)); o.tsPrecio=new Date().toISOString(); log('fix','orden limitada ejecutada por el proveedor al alcanzar el nivel',{idGlobal:o.idGlobal, nivel:lvl, mercado:o.precioOficina}); sendDO1(o); updateOp(o,{estado:'Ejecutada'}); }
       else { updateOp(o,{estado:'Precio alcanzado'}); setTimeout(()=>{ updateOp(o,{estado:'Notificada'}); log('core','notificación al cliente (call order / aviso)',{idGlobal:o.idGlobal, par:o.par, precio:o.precioLimite}); }, 900); }
     }
   }, 700);

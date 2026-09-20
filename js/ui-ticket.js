@@ -163,8 +163,14 @@ export function openOrderBoleta({perms, onDone}){
     const errs = C.validatePreTrade({ client, ctx:S.ctx, pair, dir, divOp, nominal, tipoOrden, valueDate:new Date(fv+'T12:00:00'), observaciones:'x', tipoOperacion: tipoOrden==='FORWARD'?'SEGURO DE CAMBIO':'CONVERSIÓN' });
     if(errs.length){ toast(errs[0],'err'); return; }
     const pt = PX.tradingPrice(pair); const b = C.buildPrice({ pair, dir, divOp, pt, valueDate: tipoOrden==='FORWARD'? new Date(fv+'T12:00:00'):null, marginPorMil:C.clientMarginPorMil(client, tipoOrden==='FORWARD'?'fwd':'spot') });
-    const benef = C.beneficioEUR({ pair, nominal, divOp, precioFinal:lim, spotT:b.spotT, ptsCliente:b.ptsCliente, pts:b.pts });
-    calc = { b, benef, com:comision(nominal) }; const d = PX.dec(pair);
+    const d = PX.dec(pair);
+    // P-001: el límite tiene que ser MEJOR para el cliente que el precio actual; si ya es alcanzable, no es una orden, es una operación a mercado
+    const actual = b.precioFinal; const alcanzable = b.clientBuysBase ? lim >= actual : lim <= actual;
+    if(alcanzable){ toast(`El límite ${fmtN(lim,d)} ya es alcanzable: el precio actual para el cliente es ${fmtN(actual,d)}. ${tipo==='ORDEN LIMITADA'?'Opere a mercado desde el tile o mejore el límite.':'El precio ya está alcanzado; ajuste el nivel.'}`,'err'); return; }
+    // beneficio = solo el margen (spot pips + fwd pips) sobre el nominal, no la distancia límite-mercado
+    const margenPx = (b.spotPips + b.fwdPips) * b.pipv;
+    const benef = C.beneficioEUR({ pair, nominal, divOp, precioFinal:lim, spotT: lim - b.sign*margenPx, ptsCliente:0, pts:0 });
+    calc = { b, benef, com:comision(nominal) };
     draft = { idGlobal:C.nextGlobalId(), cliente:client.id, clienteNombre:client.nombre, canal:S.user.canal, usuario:S.user.user, tipoOrden, tipoOp:tipo, par:pair, dir, divOp, nominal, contra:C.contravalor(pair,nominal,divOp,lim),
       precioLimite:lim, precioOficina:+(lim - b.sign*b.spotPips*b.pipv).toFixed(d), fechaOp:PX.iso(today()), fechaValor:fv, fechaValidez:fval, obs:q('[data-obs]').value, estado:'Solicitud pendiente', origen:'trato', clientBuysBase:b.clientBuysBase,
       cuenta: tipoOrden==='FORWARD'? S.ctx.linea?.n : S.ctx.cargo?.n, comision:calc.com, cuentaComision:cuentaComision(), markupOk:true, spotPips:b.spotPips, fwdPips:b.fwdPips, beneficio:benef };
