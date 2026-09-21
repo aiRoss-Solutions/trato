@@ -1,8 +1,9 @@
-// Trato · ticket de ejecución en la propia caja, boleta de órdenes, anticipo, cancelación, cliente genérico, más info
+// Trato · ticket de ejecución en la propia caja, boleta de órdenes, anticipo, cancelación, cliente por asignar, más info
 import { $, $$, h, esc, fmtN, bigPx, toast, modal, parseAmount, stateChip } from './ui.js';
 import * as C from './core.js';
 import * as PX from './prices.js';
 import { S } from './state.js';
+import { label as gl, orderType as got, chip as gchip, t as gt } from './glossary.js';
 import { TENORS } from './data.js';
 
 const today = () => { const d=new Date(); d.setHours(12,0,0,0); return d; };
@@ -35,7 +36,7 @@ export function openTicket(tileEl, tile, dir, {perms, onDone}){
     fechaDispCliente: fdc ? PX.iso(fdc) : null, fechaDispEstandar: fde ? PX.iso(fde) : null, comision: comision(nominal), cuentaComision: cuentaComision() };
 
   tileEl.classList.add('ticket'); tileEl.innerHTML = `
-    <div class="t-head"><span class="pair">${esc(pair)}</span><span class="st wip" data-st>Solicitud pendiente</span><span class="muted small"><b>${esc(tipoOrden)}</b> · ${esc(tipoOp)}</span>
+    <div class="t-head"><span class="pair">${esc(pair)}</span><span class="st wip" data-st>Solicitud pendiente</span><span class="muted small"><b>${esc(gchip(tipoOp)||got(tipoOrden))}</b> · ${esc(gl(tipoOp))}</span>
       <span class="grow" style="flex:1"></span><button class="icon-btn" data-close title="Cerrar">✕</button></div>
     <div class="tk">
       <div>
@@ -61,8 +62,8 @@ export function openTicket(tileEl, tile, dir, {perms, onDone}){
         ${tipoOrden==='FORWARD' ? `<div class="row"><span>Fwd pips</span><span class="v" data-fwdpips>—</span></div>` : ''}
         <div class="row"><span>Precio final</span><span class="v"><button class="pm" data-pf="-1" ${canEdit?'':'disabled'}>−</button><span data-pf-v>—</span><button class="pm" data-pf="1" ${canEdit?'':'disabled'}>+</button></span></div>
         <div class="row"><span>Beneficio</span><span class="v"><button class="pm" data-bn="-1" ${canEdit?'':'disabled'}>−</button><span data-benef>—</span> €<button class="pm" data-bn="1" ${canEdit?'':'disabled'}>+</button></span></div>` : ''}
-        <label class="check" style="margin-top:8px"><input type="checkbox" data-mk ${markupOk?'checked':''} ${markupSelectable?'':'disabled'}> Markup completado</label>
-        <div class="tiny muted" style="margin-top:4px">La operación solo viaja al core cuando el markup está completado.</div>
+        <label class="check" style="margin-top:8px"><input type="checkbox" data-mk ${markupOk?'checked':''} ${markupSelectable?'':'disabled'}> ${gt('margenConfirmado')}</label>
+        <div class="tiny muted" style="margin-top:4px">La operación solo viaja al core cuando el margen está confirmado.</div>
         <div data-motivo class="notice err hide"></div>
       </div>
     </div>
@@ -132,7 +133,7 @@ export function openTicket(tileEl, tile, dir, {perms, onDone}){
     const ok = op.estado==='Ejecutada', conf = op.estado==='Confirmada en mercado';
     const motivo = $('[data-motivo]',tileEl); if(op.motivo){ motivo.textContent = op.motivo; motivo.classList.remove('hide'); }
     $('.actions',tileEl).innerHTML = `<span class="small muted">Ref. <b class="mono">${esc(op.ref||'—')}</b> · IdGlobal <b class="mono">${esc(op.idGlobal)}</b> · Comisión <b class="mono">${fmtN(op.comision,2)} €</b></span><span class="grow"></span>
-      ${conf ? '<button class="btn btn-navy btn-sm" data-cmk>Completar markup</button>' : ''}<button class="btn btn-primary btn-sm" data-new>Nueva operación</button>`;
+      ${conf ? '<button class="btn btn-navy btn-sm" data-cmk>Confirmar margen</button>' : ''}<button class="btn btn-primary btn-sm" data-new>Nueva operación</button>`;
     $('[data-new]',tileEl).onclick = ()=>onDone();
     $('[data-cmk]',tileEl)?.addEventListener('click', async e=>{ e.target.disabled=true; await C.completeMarkup(op); setState('Ejecutada'); toast('Markup completado. Operación enviada al core.','ok'); e.target.remove(); });
     if(ok) toast(`Operación ${op.ref} ejecutada y asentada.`, 'ok'); else if(conf) toast('Ejecutada en mercado. Pendiente de completar markup para enviarla al core.'); else toast(op.motivo||op.estado, 'err');
@@ -157,7 +158,7 @@ export function openOrderBoleta({perms, onDone}){
     </div><div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-ghost btn-sm" data-clear>Limpiar</button><span style="flex:1"></span><button class="btn btn-navy btn-sm" data-sol disabled>Solicitar</button></div></div>
     <div class="box"><h3>Datos calculados</h3><div data-calc class="empty" style="padding:30px 10px">Complete la boleta y pulse Solicitar.</div></div>
   </div>`);
-  const m = modal({ title:'Orden limitada · Call order · Aviso', body, width:860, actions:[
+  const m = modal({ title:'Órdenes y alertas', body, width:860, actions:[
     {label:'Cancelar', onClick:a=>a.close()}, {label:'Nueva operación', id:'new', cls:'btn-ghost', onClick(){ reset(); }}, {label:'Aceptar', id:'ok', cls:'btn-primary', onClick(){ accept(); }} ] });
   const q = s => $(s, body); let calc = null, draft = null;
   const btnNew = $('[data-id=new]', m.foot), btnOk = $('[data-id=ok]', m.foot);
@@ -195,7 +196,7 @@ export function openOrderBoleta({perms, onDone}){
       <div class="kv"><span>Spot pips</span><span>${fmtN(b.spotPips,1)}</span></div><div class="kv"><span>Fwd pips</span><span>${fmtN(b.fwdPips,1)}</span></div>
       <div class="kv"><span>Beneficio</span><span>${fmtN(benef,2)} €</span></div><div class="kv"><span>Comisión</span><span>${fmtN(calc.com,2)} €</span></div>
       <div class="kv wide"><span>Cuenta comisión</span><span>${esc(cuentaComision())}</span></div></div>
-      <div class="notice">${tipo==='ORDEN LIMITADA' ? 'La orden pre-consume línea de crédito y se envía al proveedor, que la ejecutará al alcanzar el precio trading.' : tipo==='CALL ORDER' ? 'Al alcanzar el precio, pasará a <b>Precio alcanzado</b> y de inmediato a <b>Notificada</b>.' : 'Aviso informativo: no consume operación de la firma ni genera asiento.'}</div>`;
+      <div class="notice">${tipo==='ORDEN LIMITADA' ? 'La orden se envía al proveedor, que la ejecutará al alcanzar el nivel de trading; al ejecutarse consume línea de riesgo si es a plazo.' : tipo==='CALL ORDER' ? 'Al alcanzar el precio, pasará a <b>Precio alcanzado</b> y de inmediato a <b>Notificada</b> (se llama al cliente).' : 'Alerta de precio: no consume operación de la sesión ni genera asiento.'}</div>`;
   };
   function accept(){
     if(!draft){ toast('Pulse Solicitar antes de aceptar.','err'); return; }
@@ -209,7 +210,7 @@ export function openOrderBoleta({perms, onDone}){
 export function openAnticipo(op, {perms, onDone}){
   const flex = /FLEXIBLE/.test(op.tipoOp); const d = PX.dec(op.par); const pend = op.dispon ?? op.nominal;
   const body = h(`<div class="two">
-    <div class="box"><h3>Seguro de cambio original</h3><div class="kv-grid">
+    <div class="box"><h3>Forward original</h3><div class="kv-grid">
       <div class="kv"><span>Cliente</span><span>${esc(S.client.nombre)}</span></div><div class="kv"><span>Referencia</span><span>${esc(op.ref)}</span></div>
       <div class="kv"><span>Fecha operación</span><span>${PX.es(op.fechaOp)}</span></div><div class="kv"><span>Fecha valor</span><span>${PX.es(op.fechaValor)}</span></div>
       <div class="kv"><span>Precio oficina</span><span>${fmtN(op.precioOficina,d)}</span></div><div class="kv"><span>Precio cliente</span><span>${fmtN(op.precioCliente,d)}</span></div>
@@ -224,11 +225,11 @@ export function openAnticipo(op, {perms, onDone}){
         <div class="kv"><span>Spot pips</span><span class="v" style="display:flex;gap:6px;align-items:center"><button class="pm" data-pm="-1">−</button><span data-sp>—</span><button class="pm" data-pm="1">+</button></span></div><div class="kv"><span>Fwd pips</span><span data-fp>—</span></div>
         <div class="kv"><span>Beneficio</span><span data-bn>—</span></div><div class="kv"><span>Estado</span><span data-st>${stateChip('Solicitud pendiente',C.STATES)}</span></div></div>
         <div class="big-px"><small>Precio anticipo cliente</small><span data-pc>—</span></div>
-        <label class="check"><input type="checkbox" data-mk checked ${perms.markup?'':'disabled'}> Markup completado</label>
+        <label class="check"><input type="checkbox" data-mk checked ${perms.markup?'':'disabled'}> ${gt('margenConfirmado')}</label>
         ${flex?'<div class="notice">Anticipo de flexible: sin streaming de precios ejecutables. Se mantienen los datos originales; solo importe y fecha son modificables.</div>':''}
       </div></div></div>`);
   let rfs=null, last=null, override=null, frozen=false; const q = s=>$(s,body);
-  const m = modal({ title:'Anticipo de seguro de cambio', body, width:900, onClose(){ rfs?.close(); }, actions:[ {label:'Rechazar', onClick:a=>{ rfs?.close(); a.close(); }}, {label:'Aceptar', id:'ok', cls:'btn-primary', onClick(){ accept(); }} ] });
+  const m = modal({ title:'Anticipo de forward', body, width:900, onClose(){ rfs?.close(); }, actions:[ {label:'Rechazar', onClick:a=>{ rfs?.close(); a.close(); }}, {label:'Aceptar', id:'ok', cls:'btn-primary', onClick(){ accept(); }} ] });
   const marginPorMil = C.clientMarginPorMil(S.client,'fwd');
   function paint(){
     const nd = PX.tenorDate(q('[data-fv]').value); const imp = parseAmount(q('[data-imp]').value);
@@ -260,7 +261,7 @@ export function openAnticipo(op, {perms, onDone}){
 export function openCancelacion(op, {perms, onDone}){
   const flex = /FLEXIBLE/.test(op.tipoOp); const d = PX.dec(op.par); const pend = op.dispon ?? op.nominal; const opp = op.dir==='COMPRAR'?'VENDER':'COMPRAR';
   const body = h(`<div>
-    <div class="two"><div class="box"><h3>Seguro de cambio original</h3><div class="kv-grid">
+    <div class="two"><div class="box"><h3>Forward original</h3><div class="kv-grid">
       <div class="kv"><span>Referencia</span><span>${esc(op.ref)}</span></div><div class="kv"><span>Fecha valor</span><span>${PX.es(op.fechaValor)}</span></div>
       <div class="kv"><span>Precio oficina</span><span>${fmtN(op.precioOficina,d)}</span></div><div class="kv"><span>Precio cliente</span><span>${fmtN(op.precioCliente,d)}</span></div>
       <div class="kv"><span>${op.dir} ${op.divOp}</span><span>${fmtN(op.nominal,2)}</span></div><div class="kv"><span>Pendiente</span><span>${fmtN(pend,2)} ${op.divOp}</span></div></div></div>
@@ -274,10 +275,10 @@ export function openCancelacion(op, {perms, onDone}){
         <div class="kv"><span>Spot pips</span><span style="display:flex;gap:6px;align-items:center"><button class="pm" data-pm="-1">−</button><span data-c-sp>—</span><button class="pm" data-pm="1">+</button></span></div><div class="kv"><span>Fwd pips</span><span data-c-fp>—</span></div>
         <div class="kv"><span>Beneficio</span><span data-c-bn>—</span></div><div class="kv"><span>Estado</span><span data-st>${stateChip('Solicitud pendiente',C.STATES)}</span></div></div>
         <div class="big-px"><small>Precio cancelación cliente</small><span data-c-pc>—</span></div>
-        <label class="check"><input type="checkbox" data-mk checked ${perms.markup?'':'disabled'}> Markup completado</label></div></div>
+        <label class="check"><input type="checkbox" data-mk checked ${perms.markup?'':'disabled'}> ${gt('margenConfirmado')}</label></div></div>
     ${flex?'<div class="notice">Flexible: la pata de anticipo mantiene los datos originales; la de cancelación sí tiene streaming.</div>':''}</div>`);
   let rfs=null, last=null, override=null, frozen=false; const q=s=>$(s,body);
-  const m = modal({ title:'Cancelación de seguro de cambio', body, width:920, onClose(){ rfs?.close(); }, actions:[ {label:'Rechazar', onClick:a=>{ rfs?.close(); a.close(); }}, {label:'Aceptar', cls:'btn-primary', onClick(){ accept(); }} ] });
+  const m = modal({ title:'Cancelación de forward', body, width:920, onClose(){ rfs?.close(); }, actions:[ {label:'Rechazar', onClick:a=>{ rfs?.close(); a.close(); }}, {label:'Aceptar', cls:'btn-primary', onClick(){ accept(); }} ] });
   const marginPorMil = C.clientMarginPorMil(S.client,'fwd');
   function paint(){
     const nd = PX.tenorDate(q('[data-fv]').value); const imp = parseAmount(q('[data-imp]').value); const pipv = PX.pip(op.par);
@@ -325,7 +326,7 @@ export function masInfo(op, {perms}={}){
   const F = v => v===undefined||v===null||v===''? '—' : v; const Dt = v => v ? PX.es(v) : '—'; const Nn=(v,dd=2)=> v===undefined||v===null? '—' : fmtN(v,dd);
   const kv = (l,v,mono=true) => `<div class="kv"><span>${l}</span><span class="${mono?'mono':''}">${v}</span></div>`;
   const grp = (t, rows) => rows.length? `<div class="box"><h3>${t}</h3><div class="kv-grid">${rows.join('')}</div></div>` : '';
-  const g1 = [ kv('Referencia', esc(F(op.ref))), kv('IdGlobal', esc(F(op.idGlobal))), kv('Tipo de orden', esc(F(op.tipoOrden)),false), kv('Tipo de operación', esc(F(op.tipoOp)),false),
+  const g1 = [ kv('Referencia', esc(F(op.ref))), kv('IdGlobal', esc(F(op.idGlobal))), kv('Tipo de orden', esc(got(F(op.tipoOrden))),false), kv('Tipo de operación', esc(gl(F(op.tipoOp))),false),
     op.asociada? kv('Operación asociada', esc(op.asociada)) : '', op.pata? kv('Pata enlazada', esc(op.pata)) : '', kv('Estado', stateChip(op.estado, C.STATES), false), op.motivo? kv('Motivo', esc(op.motivo), false):'',
     ...(interno? [kv('Canal', esc(F(op.canal))), kv('Usuario', esc(F(op.usuario)))] : []) ];
   const g2 = [ kv(`${esc(op.dir)} ${esc(op.divOp)}`, Nn(op.nominal)), kv(`Contravalor ${esc(oth)}`, Nn(op.contra)), kv('Precio cliente', Nn(op.precioCliente,d)),
@@ -334,8 +335,8 @@ export function masInfo(op, {perms}={}){
   const g3 = [ kv('Fecha operación', Dt(op.fechaOp)), kv('Fecha valor', Dt(op.fechaValor)), op.fechaArbitraje? kv('Fecha arbitraje', Dt(op.fechaArbitraje)) : '', op.fechaValidez? kv('Fecha validez', Dt(op.fechaValidez)) : '',
     op.fechaDispEstandar? kv('Disponibilidad estándar', Dt(op.fechaDispEstandar)) : '', op.fechaDispCliente? kv('Disponibilidad cliente', Dt(op.fechaDispCliente)) : '', kv('Fecha ejecución', Dt(op.fechaEjec)), kv('Hora ejecución', esc(F(op.hora))) ];
   const g4 = interno ? [ kv('Spot pips', Nn(op.spotPips,1)), kv('Fwd pips', Nn(op.fwdPips,1)), op.ptsFwd!==undefined? kv('Puntos fwd (precio)', Nn(op.ptsFwd/PX.pip(op.par),1)) : '', kv('Beneficio estimado', op.beneficio!==undefined? Nn(op.beneficio)+' €':'—'),
-    kv('Mark-up', op.markupOk===false? '<span class="st warn">NO COMPLETADO</span>' : '<span class="st ok">COMPLETADO</span>', false), op.obs? kv('Observaciones', esc(op.obs), false) : '', kv('Origen', esc(op.origen==='core'?'alta en el core (back-to-front)':'plataforma'), false) ] : [];
+    kv('Margen', op.markupOk===false? '<span class="st warn">SIN CONFIRMAR</span>' : '<span class="st ok">CONFIRMADO</span>', false), op.obs? kv('Observaciones', esc(op.obs), false) : '', kv('Origen', esc(op.origen==='core'?'alta en el core (back-to-front)':'plataforma'), false) ] : [];
   const g5 = [ kv('Cuenta operativa', esc(F(op.cuenta))), op.cuenta2? kv('Cuenta operativa 2', esc(op.cuenta2)) : '' ];
   const body = `<div class="two">${grp('Operación', g1.filter(Boolean))}${grp('Importes y precios', g2.filter(Boolean))}</div><div class="two" style="margin-top:14px">${grp('Fechas', g3.filter(Boolean))}${grp(interno?'Márgenes y mark-up':'Cuentas', interno? g4.filter(Boolean) : g5.filter(Boolean))}</div>${interno? `<div style="margin-top:14px">${grp('Cuentas', g5.filter(Boolean))}</div>`:''}`;
-  modal({ title:`${esc(op.tipoOp)} · ${esc(op.ref||op.idGlobal)} · ${esc(op.par)}`, width:860, body, actions:[{label:'Cerrar', cls:'btn-primary', onClick:a=>a.close()}] });
+  modal({ title:`${esc(gl(op.tipoOp))} · ${esc(op.ref||op.idGlobal)} · ${esc(op.par)}`, width:860, body, actions:[{label:'Cerrar', cls:'btn-primary', onClick:a=>a.close()}] });
 }

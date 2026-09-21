@@ -4,6 +4,7 @@ import * as C from './core.js';
 import * as PX from './prices.js';
 import { S, resetTilesFromWorkspace } from './state.js';
 import { PAIRS, TENORS, FLAGS, BRAND, CLIENTS } from './data.js';
+import { label as gl, chip as gchip, t as gt, channel as gchan } from './glossary.js';
 import { renderDock } from './ui-blotters.js';
 import { openTicket, openOrderBoleta, openAnticipo, openCancelacion, openCancelGenerica, masInfo } from './ui-ticket.js';
 
@@ -30,7 +31,7 @@ export function mountDesk(el, user, {onLogout, onToggleConsole, onTheme}){
 // ---------------- cabecera ----------------
 function renderTopbar(){
   const c = S.client, ctx = S.ctx;
-  const cliOpts = CLIENTS.map(x=>`<option value="${esc(x.nombre)}">${esc(x.nif)} · ${esc(x.nombre)}</option>`).join('') + (perms.generico ? `<option value="Cliente genérico">Cliente genérico</option>` : '');
+  const cliOpts = CLIENTS.map(x=>`<option value="${esc(x.nombre)}">${esc(x.nif)} · ${esc(x.nombre)}</option>`).join('') + (perms.generico ? `<option value="Cliente por asignar">Cliente por asignar</option>` : '');
   const sel = (label, key, items, getL, getV) => `<div class="ctx"><label>${label}</label><select data-ctx="${key}" ${!c||c.generic?'disabled':''}>${items.length? items.map((it,i)=>`<option value="${i}" ${ctx[key]===it?'selected':''}>${esc(getL(it))}</option>`).join('') : '<option>—</option>'}</select></div>`;
   q('[data-topbar]').innerHTML = `
     <div class="brand"><div class="mark">T</div><b>${BRAND.name}</b></div>
@@ -38,13 +39,13 @@ function renderTopbar(){
     <div class="cli"><label>Cliente</label><input list="cli-list" data-cli placeholder="Nombre o NIF…" value="${esc(c?.nombre||'')}"><datalist id="cli-list">${cliOpts}</datalist></div>
     ${sel('Cuenta de cargo','cargo', c&&!c.generic? c.cuentas:[], x=>x.n)}
     ${sel('Cuenta de abono','abono', c&&!c.generic? c.cuentas:[], x=>x.n)}
-    ${sel('Línea seguro de cambio','linea', c&&!c.generic? c.lineas:[], x=>`${x.n} · ${x.div}`)}
+    ${sel(gt('lineaRiesgo'),'linea', c&&!c.generic? c.lineas:[], x=>`${x.n} · ${x.div}`)}
     ${sel('Ordenante','ordenante', c&&!c.generic? c.ordenantes:[], x=>`${x.nif} ${x.apoderado?'· apoderado':''}`)}
     <div class="tright">
     <span class="sysclock mono" data-clock title="Fecha y hora del sistema"></span><span class="envchip ${envLabel().toLowerCase()}" title="Entorno">${envLabel()}</span>
     <button class="chip" data-ws title="Workspaces">▦ ${esc(S.workspaces[S.activeWs].name)}</button>
-    <button class="modebtn" data-rfs title="Orden limitada · Call order · Aviso">RFS</button>
-    <span class="chip">${esc(S.user.nombre)} · <span class="mono">${esc(S.user.canal)}</span></span>
+    <button class="modebtn" data-rfs title="Orden limitada · Alerta con llamada · Alerta de precio">Órdenes</button>
+    <span class="chip">${esc(S.user.nombre)} · <span class="mono">${esc(gchan(S.user.canal))}</span></span>
     <button class="icon-btn" data-menu title="Menú">☰</button>
     </div>`;
   clearInterval(clockTimer); clockTimer = sysClock(q('[data-clock]'));
@@ -60,8 +61,8 @@ function renderTopbar(){
 }
 function selectClient(val){
   val = (val||'').trim(); if(!val){ S.client=null; S.ctx={cargo:null,abono:null,linea:null,ordenante:null}; rerenderAll(); return; }
-  if(/gen[ée]rico/i.test(val)){ if(!perms.generico){ toast('Su perfil no tiene permiso para operar con cliente genérico.','err'); return; } if(!S.client){ toast('Conéctese primero con un cliente real para poder usar el cliente genérico.','err'); return; }
-    S.client = C.generic(); S.ctx={cargo:null,abono:null,linea:null,ordenante:null}; S.tiles.forEach(t=>t.tipo='OTROS'); C.log('core','cliente genérico activado', {}); toast('Cliente genérico: solo claves de arbitraje, sin margen de cliente.'); rerenderAll(); return; }
+  if(/gen[ée]rico|por asignar/i.test(val)){ if(!perms.generico){ toast('Su perfil no tiene permiso para operar con cliente por asignar.','err'); return; } if(!S.client){ toast('Conéctese primero con un cliente real para poder operar con cliente por asignar.','err'); return; }
+    S.client = C.generic(); S.ctx={cargo:null,abono:null,linea:null,ordenante:null}; S.tiles.forEach(t=>t.tipo='OTROS'); C.log('core','cliente por asignar activado', {}); toast('Cliente por asignar: solo spot, sin margen de cliente; la operación se reasigna después.'); rerenderAll(); return; }
   const c = C.findClient(val) || C.findClient(val.split(' · ').pop());
   if(!c){ toast('Cliente no encontrado en el core.','err'); return; }
   S.client = c; const d = C.getDatosEmpresa(c);
@@ -79,8 +80,8 @@ function renderPretrade(){
   const margen = c && !g ? (c.margenPersonalizado ? `personalizado` : fmtN(c.margenPorMil,2)+' ‰') : '—';
   q('[data-pretrade]').className = 'pretrade'+(g?' generic':'');
   q('[data-pretrade]').innerHTML =
-    kv('ID Persona', g?'—':esc(c.id)) + kv('Tutor', g?'—':esc(c.tutor)) + kv('Saldo cuenta origen', g||!ctx.cargo?'—':fmtN(ctx.cargo.saldo,2)+' '+ctx.cargo.div) +
-    kv('Límite línea seguro cambio', g||!ctx.linea?'—':fmtN(ctx.linea.disp,2)+' '+ctx.linea.div) + kv('Estado MiFID', mifid) + kv('Titular MiFID', g?'—':esc(c.titularMifid)) +
+    kv(gt('idCliente'), g?'—':esc(c.id)) + kv(gt('gestor'), g?'—':esc(c.tutor)) + kv('Saldo cuenta origen', g||!ctx.cargo?'—':fmtN(ctx.cargo.saldo,2)+' '+ctx.cargo.div) +
+    kv('Disponible línea FX', g||!ctx.linea?'—':fmtN(ctx.linea.disp,2)+' '+ctx.linea.div) + kv('Estado MiFID', mifid) + kv('Titular MiFID', g?'—':esc(c.titularMifid)) +
     kv('Código LEI', g?'—':(c.lei==='—'?'Sin LEI':`<span class="mono">${esc(c.lei)}</span>`)) + kv('Fecha renovación LEI', g||c.leiRenov==='—'?'—':PX.es(c.leiRenov)) + kv('Email cliente', g?'—':esc(c.email)) +
     kv('Teléfono', g?'—':esc(c.tel)) + kv('Ordenante', g||!ctx.ordenante?'—':esc(ctx.ordenante.nombre)+(ctx.ordenante.mifid==='ok'?' <span class="dot ok"></span>':' <span class="dot warn"></span>')) +
     kv(c&&!g&&c.margenPersonalizado?'Margen personalizado':'Margen (‰)', c&&!g&&c.margenPersonalizado?'Sí':margen);
@@ -105,9 +106,9 @@ function renderTile(t, i, flex){
   const g = S.client?.generic; const [base, quote] = t.pair.split('/'); const oth = t.divOp===base?quote:base;
   const el = h(`<div class="tile" data-i="${i}">
     <div class="t-head"><span class="pair" data-pair title="Cambiar par">${FLAGS[base]||''} ${esc(t.pair)} ${FLAGS[quote]||''}</span>
-      <span class="seg"><button data-tipo="OTROS" class="${t.tipo==='OTROS'?'on':''}" title="Clave de arbitraje y seguros de cambio">Otros</button><button data-tipo="CONVERSION" class="${t.tipo==='CONVERSION'?'on':''}" ${g||flex?'disabled':''} title="Contado: spot, hoy y mañana">Conversión</button></span>
+      <span class="seg"><button data-tipo="OTROS" class="${t.tipo==='OTROS'?'on':''}" title="Spot con liquidación externa y forwards">Spot · Fwd</button><button data-tipo="CONVERSION" class="${t.tipo==='CONVERSION'?'on':''}" ${g||flex?'disabled':''} title="Cambio entre cuentas del cliente: spot, hoy y mañana">Entre cuentas</button></span>
       <span class="grow" style="flex:1"></span>${flex?'':'<button class="icon-btn close" data-close>✕</button>'}</div>
-    <div class="t-row obsrow"><span class="lbl">Obs.</span><input data-obs placeholder="${t.tipo==='OTROS'&&C.cfg.obsObligatorias?'Motivo / observaciones · obligatorio en claves de arbitraje':'Observaciones (opcional)'}" value="${esc(t.obs)}"></div>
+    <div class="t-row obsrow"><span class="lbl">Obs.</span><input data-obs placeholder="${t.tipo==='OTROS'&&C.cfg.obsObligatorias?'Motivo / observaciones · obligatorio en spot con liquidación externa':'Observaciones (opcional)'}" value="${esc(t.obs)}"></div>
     <div class="prices">
       <div class="side" data-side="COMPRAR" role="button" tabindex="0" aria-label="Comprar ${esc(t.divOp)}: solicitar precio"><div class="lbl"><b>COMPRAR ${esc(t.divOp)}</b><span>▾</span></div><div class="px" data-px="COMPRAR">—</div></div>
       <div class="side" data-side="VENDER" role="button" tabindex="0" aria-label="Vender ${esc(t.divOp)}: solicitar precio"><div class="lbl"><b>VENDER ${esc(t.divOp)}</b><span>▾</span></div><div class="px" data-px="VENDER">—</div></div>
@@ -127,7 +128,7 @@ function renderTile(t, i, flex){
   $('[data-fdc]',el)?.addEventListener('change', e=>{ let x=new Date(e.target.value+'T12:00:00'); if(!PX.isBiz(x)){ x=PX.nextBiz(x); e.target.value=PX.iso(x); toast('Fecha de disponibilidad no hábil: se ajusta al siguiente día hábil.'); } t.fdc = x; });
   $$('[data-side]',el).forEach(s=>s.onclick=()=>{ if(!S.client){ toast('Seleccione un cliente.','err'); $('[data-cli]').focus(); return; } if(!t.amount){ toast('Indique un importe antes de solicitar precio.','err'); amt.classList.add('req'); amt.focus(); return; }
     const obsIn = $('[data-obs]',el); const esClave = t.tipo==='OTROS' && S.mode!=='FLEX' && PX.tenorFor(t.valueDate||PX.tenorDate(t.tenor))!=='FWD';
-    if(C.cfg.obsObligatorias && esClave && !t.obs.trim()){ toast('Indique el motivo en «Observaciones»: obligatorio en claves de arbitraje (trazabilidad). Se puede relajar en Menú → Demo.','err'); obsIn.classList.add('req'); obsIn.focus(); return; }
+    if(C.cfg.obsObligatorias && esClave && !t.obs.trim()){ toast('Indique el motivo en «Observaciones»: obligatorio en spot con liquidación externa (trazabilidad). Se puede relajar en Menú → Demo.','err'); obsIn.classList.add('req'); obsIn.focus(); return; }
     openTicket(el, t, s.dataset.side, { perms, onDone:()=>renderCenter() }); });
   $$('[data-side]',el).forEach(sd=>sd.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); sd.click(); } }));
   $('[data-obs]',el).addEventListener('input', e=>e.target.classList.remove('req')); amt.addEventListener('input', ()=>amt.classList.remove('req'));
@@ -178,7 +179,7 @@ function renderDockNow(){
     if(action==='anticipar') openAnticipo(op,{perms,onDone:renderDockNow});
     else if(action==='cancelar') openCancelacion(op,{perms,onDone:renderDockNow});
     else if(action==='cancelarOrden'){ C.cancelOrder(op); toast('Orden cancelada.','ok'); }
-    else if(action==='completarMarkup'){ C.completeMarkup(op).then(()=>toast('Markup completado. Operación enviada al core.','ok')); }
+    else if(action==='completarMarkup'){ C.completeMarkup(op).then(()=>toast('Margen confirmado. Operación enviada al core.','ok')); }
     else if(action==='cancelarGenerica') openCancelGenerica(op,{onDone:renderDockNow});
     else if(action==='masInfo') masInfo(op,{perms});
   }});
@@ -197,8 +198,8 @@ function renderRPanel({onLogout,onToggleConsole,onTheme}){
       <div class="row"><span>Idioma</span><span class="seg"><button class="on">ES</button><button disabled title="Pendiente">EN</button></span></div>
       <div class="sect">Integración (demo)</div>
       <button class="item" data-go="CONSOLE">Consola de integración</button>
-      <div class="row"><span>Switch proveedor → libros</span><button class="switch ${C.cfg.switchOn?'on':''}" data-switch><i></i>${C.cfg.switchOn?'ON':'OFF'}</button></div>
-      <div class="row"><span>Observaciones obligatorias<br><small class="muted">en claves de arbitraje</small></span><button class="switch ${C.cfg.obsObligatorias?'on':''}" data-obsreq><i></i>${C.cfg.obsObligatorias?'ON':'OFF'}</button></div>
+      <div class="row"><span>${gt('cobertura')}<br><small class="muted">OFF = el proveedor cubre en mercado</small></span><button class="switch ${C.cfg.switchOn?'on':''}" data-switch><i></i>${C.cfg.switchOn?'ON':'OFF'}</button></div>
+      <div class="row"><span>Observaciones obligatorias<br><small class="muted">en spot con liquidación externa</small></span><button class="switch ${C.cfg.obsObligatorias?'on':''}" data-obsreq><i></i>${C.cfg.obsObligatorias?'ON':'OFF'}</button></div>
       <div class="row"><span>Rechazos aleatorios<br><small class="muted">last look 3 % · asiento 2 %</small></span><button class="switch ${C.cfg.rechazosAleatorios?'on':''}" data-rechazos><i></i>${C.cfg.rechazosAleatorios?'ON':'OFF'}</button></div>
       <div class="sect">Sesión</div>
       <button class="item" data-go="LOGOUT">Salir</button>
@@ -211,5 +212,5 @@ function renderRPanel({onLogout,onToggleConsole,onTheme}){
   $$('[data-theme]',p).forEach(b=>b.onclick=()=>{ onTheme(b.dataset.theme); renderRPanel({onLogout,onToggleConsole,onTheme}); });
   $('[data-rechazos]',p).onclick=()=>{ C.cfg.rechazosAleatorios=!C.cfg.rechazosAleatorios; C.log('core',`Rechazos aleatorios ${C.cfg.rechazosAleatorios?'ON':'OFF'}`,{}); renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); };
   $('[data-obsreq]',p).onclick=()=>{ C.cfg.obsObligatorias=!C.cfg.obsObligatorias; C.log('core',`Observaciones obligatorias ${C.cfg.obsObligatorias?'ON':'OFF'}`,{}); renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); renderCenter(); toast(C.cfg.obsObligatorias?'Observaciones obligatorias en claves de arbitraje.':'Observaciones opcionales (modo demo).'); };
-  $('[data-switch]',p).onclick=()=>{ C.cfg.switchOn=!C.cfg.switchOn; C.log('core',`Switch ${C.cfg.switchOn?'ON':'OFF'}`,{}); renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); };
+  $('[data-switch]',p).onclick=()=>{ C.cfg.switchOn=!C.cfg.switchOn; C.log('core',`Cobertura en libros ${C.cfg.switchOn?'ON':'OFF'}`,{}); renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); };
 }

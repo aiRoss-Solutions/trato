@@ -9,6 +9,17 @@ Lo que hay ahí fuera y qué nos llevamos. Solo fuentes leídas hoy; lo que no s
 | **UBS Neo** (mejor SDP Euromoney 2025) | "Workspace integrado" de pre-trade → ejecución → post-trade; analítica **embebida junto a la ejecución**; **autoservicio del ciclo de vida** (rolls, allocations, amendments) para depender menos del sales | El canal empresas hace anticipos, cancelaciones y prórrogas **solo**; el precio se explica en contexto (cuando Maxi abra la capa "nuevo") |
 | Adaptive (SDPs a medida, Reactive Trader) | UIs de sales y de cliente separadas sobre el mismo core; UAT con despliegues diarios | Dos frontales (sala / empresas) sobre un `core.js` común: **ya es así**, mantenerlo |
 
+
+## 1b. Ampliación (21-sep, sesión v0.3) — tres SDP más
+| Plataforma | Qué se pudo verificar | Qué nos llevamos |
+|---|---|---|
+| **J.P. Morgan Execute** (mejor SDP 2024) | Un **blotter de órdenes integrado escritorio + móvil**; catálogo de órdenes muy amplio (take profit, stop, trailing, call, TWAP+, *spot contingent forward*, IF Done / OCO); analítica de cartera (exposiciones, ratios de cobertura); liquidación casi en tiempo real (2025); paridad web/escritorio/móvil. Sin capturas de UI: **no verificado** el layout | El **blotter es una sola cosa en todos los canales** (misma fuente, distinta vista); las órdenes son un producto de primera, no un modal escondido |
+| **Barclays BARX** | Cross-asset; pre-trade (análisis de volumen) y post-trade (TCA) en la misma plataforma; acceso por GUI propia, FIX y multi-dealer. Sin detalle de UI: **no verificado** | Analítica **antes y después** de la operación en el mismo sitio; Trato ya tiene la consola de integración como "post-trade visible", el pre-trade está en la cabecera |
+| **Goldman Marquee** (innovación financiera del año, Euromoney) | **MarketView: dashboards personalizables y compartibles**; Marquee Trader para ejecución FX integrado con la analítica; menús configurables | Los **workspaces guardados y compartibles** entre usuarios (un jefe de mesa publica su disposición al equipo) encajan con las "disposiciones" multiventana |
+| Deutsche Autobahn FX | Solo historia (1996/2002) y notas de prensa; **nada de UI verificable** | — |
+
+Conclusión añadida: en los tres, la **personalización del espacio de trabajo** y el **blotter único multi-canal** son lo diferencial; ninguno vende un layout fijo.
+
 ## 2. Portales de divisa para empresas de la banca española (competencia directa del canal web)
 | | Qué hacen | Qué nos llevamos |
 |---|---|---|
@@ -46,6 +57,8 @@ Kantox (mejor e-FX corporates 2019), Ebury, iBanFirst: **dashboard primero** (ex
 - **Multiventana**: ⧉ en cada panel, disposiciones guardadas ("Mesa 3 pantallas", "Portátil"), sincronización por BroadcastChannel, URLs relativas para Pages.
 
 ## Fuentes
+- J.P. Morgan, *Execute* (ficha de producto, App Store) · Corporate Alliance, *Deep dive JPM Execute* · Global Finance, *GW Platt FX Tech 2025*
+- Barclays, *BARX FX* · The TRADE, *Barclays adds FX to BARX* · Goldman Sachs, *Marquee* · The Full FX, *Marquee MarketView* · Euromoney, *Financial innovation of the year: Marquee*
 - Euromoney, *The world's best FX single-dealer platform 2025: Neo by UBS* · FX Markets, *Best single-dealer platform: Citi* · IFR, *Revenge of the single-dealer platform*
 - CaixaBank, *FX Now* (nota de prensa y ficha de producto) · BBVA, *Operativa de divisas / eMarkets* (resumen de buscador; la página de BBVA CIB devolvió 403)
 - Kantox, Ebury, iBanFirst (fichas de producto y comparativa iBanFirst vs Ebury) · CTMfile, *Best e-FX platform for corporates*

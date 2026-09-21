@@ -1,5 +1,5 @@
 // Trato · datos simulados del core bancario. Todo ficticio y en memoria, nada real.
-export const BRAND = { name:'Trato', tagline:'Mesa de distribución FX', version:'0.2.1' };
+export const BRAND = { name:'Trato', tagline:'Distribución FX · mesa, banca telefónica y empresas', version:'0.2.1' };
 
 export const PAIRS = [
   'EUR/USD','EUR/GBP','EUR/CHF','EUR/JPY','EUR/CAD','EUR/AUD','EUR/NZD','EUR/SEK','EUR/NOK','EUR/DKK',
@@ -38,20 +38,20 @@ export const TENORS = [
 export const HOLIDAYS = ['2026-10-12','2026-11-01','2026-12-06','2026-12-08','2026-12-25','2027-01-01','2027-01-06'];
 
 // Clientes FICTICIOS (empresas, personas, NIF, LEI y cuentas inventados; entidad 0999 no existe).
-// Las cuentas de línea de seguro de cambio empiezan por 89 (regla del core simulado).
+// Las líneas de riesgo FX (LR …) cubren los forwards; su divisa debe ser una del par.
 export const CLIENTS = [
   { id:'30412877', nif:'B87654321', nombre:'Nortech Componentes SL', tutor:'Laura Bermúdez', mifid:'ok', titularMifid:'Sergio Alcaraz',
     lei:'9598TRATO0001A2B3C405', leiRenov:'2027-03-15', email:'tesoreria@nortech-demo.es', tel:'910 000 101',
     margenPorMil:0.5, nivel:'oro', margenPersonalizado:true, margenes:{'spot':0.4,'fwd':0.6},
     ordenantes:[{nif:'00000001R',nombre:'Sergio Alcaraz',apoderado:true,mifid:'ok'},{nif:'00000002W',nombre:'Nuria Esteban',apoderado:false,mifid:'ok'}],
     cuentas:[{n:'EUR 0999-2210-44/001101',div:'EUR',saldo:1250000},{n:'USD 0999-2210-44/001102',div:'USD',saldo:84000},{n:'GBP 0999-2210-44/001103',div:'GBP',saldo:12500}],
-    lineas:[{n:'89 0999-2210/000301',div:'USD',limite:1500000,disp:1500000},{n:'89 0999-2210/000302',div:'EUR',limite:500000,disp:500000}] },
+    lineas:[{n:'LR 0999-2210/000301',div:'USD',limite:1500000,disp:1500000},{n:'LR 0999-2210/000302',div:'EUR',limite:500000,disp:500000}] },
   { id:'30588120', nif:'A12345678', nombre:'Bodegas Peñalba SA', tutor:'Diego Arribas', mifid:'ok', titularMifid:'Marina Peñalba',
     lei:'9598TRATO0002D4E5F606', leiRenov:'2026-11-02', email:'finanzas@penalba-demo.com', tel:'947 000 202',
     margenPorMil:0.8, nivel:'plata', margenPersonalizado:false, margenes:null,
     ordenantes:[{nif:'00000003A',nombre:'Marina Peñalba',apoderado:true,mifid:'ok'}],
     cuentas:[{n:'EUR 0999-3350-17/002201',div:'EUR',saldo:380000},{n:'USD 0999-3350-17/002202',div:'USD',saldo:22000}],
-    lineas:[{n:'89 0999-3350/000410',div:'USD',limite:400000,disp:400000}] },
+    lineas:[{n:'LR 0999-3350/000410',div:'USD',limite:400000,disp:400000}] },
   { id:'30671933', nif:'B11223344', nombre:'Frío Mediterráneo SL', tutor:'Laura Bermúdez', mifid:'warn', titularMifid:'Tomás Ferrer',
     lei:'—', leiRenov:'—', email:'admin@friomed-demo.es', tel:'965 000 303',
     margenPorMil:1.2, nivel:'bronce', margenPersonalizado:false, margenes:null,
@@ -63,28 +63,28 @@ export const CLIENTS = [
     margenPorMil:0.7, nivel:'plata', margenPersonalizado:true, margenes:{'spot':0.7,'fwd':0.9},
     ordenantes:[{nif:'00000005M',nombre:'Clara Domínguez',apoderado:true,mifid:'ko'}],
     cuentas:[{n:'EUR 0999-5580-31/004401',div:'EUR',saldo:210000},{n:'JPY 0999-5580-31/004402',div:'JPY',saldo:9800000}],
-    lineas:[{n:'89 0999-5580/000520',div:'JPY',limite:60000000,disp:60000000}] },
+    lineas:[{n:'LR 0999-5580/000520',div:'JPY',limite:60000000,disp:60000000}] },
 ];
-export const GENERIC = { id:'GEN', nif:'—', nombre:'Cliente genérico', generic:true, tutor:'—', mifid:null, cuentas:[], lineas:[], ordenantes:[], margenPorMil:0 };
+export const GENERIC = { id:'GEN', nif:'—', nombre:'Cliente por asignar', generic:true, tutor:'—', mifid:null, cuentas:[], lineas:[], ordenantes:[], margenPorMil:0 };
 
 // Operaciones históricas "dadas de alta en el core fuera de la plataforma" (back-to-front)
 export const SEED_OPS = [
   { ref:'SC-165578', cliente:'30412877', tipoOrden:'FORWARD', tipoOp:'SEGURO DE CAMBIO', par:'EUR/USD', dir:'VENDER', divOp:'USD',
     nominal:50000, contra:44114.70, precioCliente:1.1334, precioOficina:1.1322, fechaOp:'2026-08-20', fechaValor:'2026-12-15',
-    fechaArbitraje:'2026-12-14', estado:'Ejecutada', canal:'SALA', usuario:'lbermudez', cuenta:'89 0999-2210/000301', origen:'core' },
+    fechaArbitraje:'2026-12-14', estado:'Ejecutada', canal:'SALA', usuario:'lbermudez', cuenta:'LR 0999-2210/000301', origen:'core' },
   { ref:'SC-165590', cliente:'30412877', tipoOrden:'FORWARD', tipoOp:'SEGURO DE CAMBIO FLEXIBLE', par:'EUR/GBP', dir:'COMPRAR', divOp:'GBP',
     nominal:30000, contra:33980.2, precioCliente:0.8829, precioOficina:0.8840, fechaOp:'2026-09-01', fechaValor:'2027-02-26',
-    fechaArbitraje:'2027-02-25', fechaDispCliente:'2026-11-02', fechaDispEstandar:'2026-10-07', estado:'Ejecutada', canal:'TEL', usuario:'darribas', cuenta:'89 0999-2210/000302', origen:'core' },
+    fechaArbitraje:'2027-02-25', fechaDispCliente:'2026-11-02', fechaDispEstandar:'2026-10-07', estado:'Ejecutada', canal:'TEL', usuario:'darribas', cuenta:'LR 0999-2210/000302', origen:'core' },
   { ref:'CV-771020', cliente:'30412877', tipoOrden:'CONTADO', tipoOp:'CONVERSIÓN', par:'EUR/USD', dir:'COMPRAR', divOp:'USD',
     nominal:10000, contra:8880.1, precioCliente:1.1261, precioOficina:1.1266, fechaOp:'2026-09-15', fechaValor:'2026-09-17',
     estado:'Ejecutada', canal:'WEB', usuario:'cliente', cuenta:'EUR 0999-2210-44/001101', origen:'core' },
   { ref:'SC-165601', cliente:'30588120', tipoOrden:'FORWARD', tipoOp:'SEGURO DE CAMBIO', par:'EUR/USD', dir:'VENDER', divOp:'USD',
     nominal:120000, contra:105894.46, precioCliente:1.1332, precioOficina:1.1320, fechaOp:'2026-09-03', fechaValor:'2026-11-30',
-    fechaArbitraje:'2026-11-27', estado:'Ejecutada', canal:'SALA', usuario:'lbermudez', cuenta:'89 0999-3350/000410', origen:'core' },
+    fechaArbitraje:'2026-11-27', estado:'Ejecutada', canal:'SALA', usuario:'lbermudez', cuenta:'LR 0999-3350/000410', origen:'core' },
 ];
 
 export const USERS = {
-  SALA: { user:'lbermudez', nombre:'Laura Bermúdez', canal:'SALA', desc:'Sala · sales trading', perms:{markup:true, generico:true, ordenes:true, verMargen:true} },
+  SALA: { user:'lbermudez', nombre:'Laura Bermúdez', canal:'SALA', desc:'Mesa · sales trading', perms:{markup:true, generico:true, ordenes:true, verMargen:true} },
   TEL: { user:'darribas', nombre:'Diego Arribas', canal:'TEL', desc:'Banca telefónica', perms:{markup:false, generico:false, ordenes:true, verMargen:true} },
-  WEB: { user:'cliente', nombre:'Sergio Alcaraz', canal:'WEB', desc:'Web de empresas', perms:{markup:false, generico:false, ordenes:true, verMargen:false} },
+  WEB: { user:'cliente', nombre:'Sergio Alcaraz', canal:'WEB', desc:'Portal de empresas', perms:{markup:false, generico:false, ordenes:true, verMargen:false} },
 };

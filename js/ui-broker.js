@@ -1,8 +1,9 @@
-// Trato · Bróker Online (canal web del cliente): vista estándar y profesional, firma ágil, módulo de operación
+// Trato · Portal de empresas (canal web del cliente): vista estándar y profesional, sesión operativa, módulo de operación
 import { $, $$, h, esc, fmtN, toast, modal, parseAmount, stateChip, envLabel, sysClock } from './ui.js';
 import * as C from './core.js';
 import * as PX from './prices.js';
 import { S } from './state.js';
+import { label as gl, t as gt, channel as gchan } from './glossary.js';
 import { G10, PAIRS, FLAGS, BRAND, CLIENTS, TENORS } from './data.js';
 import { renderDock } from './ui-blotters.js';
 import { openCancelacion, masInfo } from './ui-ticket.js';
@@ -18,12 +19,12 @@ export function mountBroker(el, user, {onLogout, onToggleConsole, onTheme}){
   askFirma(()=>{ render({onLogout,onToggleConsole,onTheme}); });
 }
 function askFirma(cb){
-  const body = h(`<div><div class="notice">Firma ágil: firme un <b>límite de tiempo</b> (obligatorio) y un <b>número de operaciones</b> (opcional). Mientras dure, las operaciones no pedirán firma individual. Al agotarse cualquiera de los dos, la sesión operativa se cierra.</div>
+  const body = h(`<div><div class="notice">Sesión operativa con firma única: fije un <b>límite de tiempo</b> (obligatorio) y un <b>número de operaciones</b> (opcional). Mientras dure, las operaciones no pedirán firma individual. Al agotarse cualquiera de los dos, la sesión operativa se cierra.</div>
     <div class="form"><div class="field"><label>Tiempo (minutos)</label><input data-min type="number" value="30" min="1" max="120"></div><div class="field"><label>Nº operaciones (opcional)</label><input data-ops type="number" placeholder="sin límite" min="1"></div></div></div>`);
-  const m = modal({ title:'Acceso operativo · firma ágil', width:520, body, actions:[
+  const m = modal({ title:'Acceso operativo · sesión con firma única', width:520, body, actions:[
     {label:'Solo consulta', onClick(a){ firma={ until:null, ops:null, consultivo:true }; a.close(); cb(); }},
     {label:'Firmar', cls:'btn-primary', onClick(a){ const min=+$('[data-min]',body).value||30; const ops=$('[data-ops]',body).value? +$('[data-ops]',body).value : null;
-      firma={ until: Date.now()+min*60000, total: min*60000, ops, opsTotal:ops, consultivo:false }; C.log('core','firma ágil registrada',{minutos:min, operaciones:ops??'sin límite'}); a.close(); cb(); }} ] });
+      firma={ until: Date.now()+min*60000, total: min*60000, ops, opsTotal:ops, consultivo:false }; C.log('core','sesión operativa abierta (firma única)',{minutos:min, operaciones:ops??'sin límite'}); a.close(); cb(); }} ] });
   m.sticky = true;
 }
 function render(cbs){
@@ -40,11 +41,11 @@ let clockTimer=null;
 function renderTop(cbs){
   const c=S.client, ctx=S.ctx;
   const acct = (label,key,items,get,bal) => `<div class="acct"><label>${label}</label><select data-ctx="${key}">${items.map((it,i)=>`<option value="${i}" ${ctx[key]===it?'selected':''}>${esc(get(it))}</option>`).join('')}</select><span class="bal">${bal}</span></div>`;
-  q('[data-top]').innerHTML = `<div class="brand"><div class="mark" style="width:28px;height:28px;border-radius:7px;background:var(--navy);color:#fff;display:grid;place-items:center;font-family:var(--mono);font-weight:800">T</div><b style="font-size:16px;color:var(--navy)">${BRAND.name} <span style="color:var(--accent)">Bróker</span></b></div>
+  q('[data-top]').innerHTML = `<div class="brand"><div class="mark" style="width:28px;height:28px;border-radius:7px;background:var(--navy);color:#fff;display:grid;place-items:center;font-family:var(--mono);font-weight:800">T</div><b style="font-size:16px;color:var(--navy)">${BRAND.name} <span style="color:var(--accent)">Empresas</span></b></div>
     ${acct('Cuenta de cargo','cargo',c.cuentas,x=>x.n,`Saldo ${fmtN(ctx.cargo.saldo,2)} ${ctx.cargo.div}`)}
     <button class="icon-btn" data-swapacc title="Intercambiar cargo y abono">⇄</button>
     ${acct('Cuenta de abono','abono',c.cuentas,x=>x.n,'')}
-    ${acct('Línea seguro de cambio','linea',c.lineas,x=>`${x.n} · ${x.div}`,`Límite ${fmtN(ctx.linea.disp,2)} ${ctx.linea.div}`)}
+    ${acct(gt('lineaRiesgo'),'linea',c.lineas,x=>`${x.n} · ${x.div}`,`Límite ${fmtN(ctx.linea.disp,2)} ${ctx.linea.div}`)}
     <span style="flex:1"></span>
     <span class="sysclock mono" data-clock title="Fecha y hora del sistema"></span><span class="envchip ${envLabel().toLowerCase()}" title="Entorno">${envLabel()}</span>
     <span class="chip">${esc(S.user.nombre)}</span>
@@ -139,7 +140,7 @@ function renderOpModule(card, idx){
   function validate(){
     const {tipoOrden,tipoOp,divOp,vd} = ctxFor();
     if(firma?.consultivo){ toast('Acceso consultivo: para operar debe firmar (pulse “Aquí” en el pie).','err'); return null; }
-    if(!firma || (firma.until && Date.now()>firma.until) || (firma.ops!==null && firma.ops<=0)){ toast('Firma ágil agotada. Renueve tiempo y operaciones.','err'); return null; }
+    if(!firma || (firma.until && Date.now()>firma.until) || (firma.ops!==null && firma.ops<=0)){ toast('Sesión operativa agotada. Renueve tiempo y operaciones.','err'); return null; }
     const errs = C.validatePreTrade({ client:S.client, ctx:{...S.ctx, useLineaForSpot:false}, pair:st.pair, dir:st.dir, divOp, nominal:st.amount, tipoOrden, valueDate:vd, observaciones:'web', tipoOperacion: tipoOp==='CONVERSIÓN'||tipoOp==='SEGURO DE CAMBIO'||tipoOp==='SEGURO DE CAMBIO FLEXIBLE'? tipoOp : (tipoOrden==='FORWARD'?'SEGURO DE CAMBIO':'CONVERSIÓN') });
     if(st.op==='FLEX' && !st.fdisp) errs.unshift('Indique la fecha de disposición del flexible.');
     if(st.tipo!=='SPOTFWD' && (!st.lim||!st.fval)) errs.unshift('Indique precio límite y fecha de validez.');
@@ -151,7 +152,7 @@ function renderOpModule(card, idx){
       const lim=+st.lim; const b=st.last||C.buildPrice({pair:st.pair,dir:st.dir,divOp:v.divOp,pt:PX.tradingPrice(st.pair),valueDate:v.tipoOrden==='FORWARD'?v.vd:null,marginPorMil:C.clientMarginPorMil(S.client,'spot')});
       const o = { idGlobal:C.nextGlobalId(), cliente:S.client.id, clienteNombre:S.client.nombre, canal:'WEB', usuario:S.user.user, tipoOrden:v.tipoOrden, tipoOp:st.tipo, par:st.pair, dir:st.dir, divOp:v.divOp, nominal:st.amount, contra:C.contravalor(st.pair,st.amount,v.divOp,lim), precioLimite:lim, precioOficina:lim,
         fechaOp:PX.iso(today()), fechaValor:st.vd, fechaValidez:st.fval, estado:'Orden enviada a mercado', origen:'trato', clientBuysBase:b.clientBuysBase, cuenta: v.tipoOrden==='FORWARD'?S.ctx.linea.n:S.ctx.cargo.n, markupOk:true, comision:C.comision(st.amount), cuentaComision:S.ctx.cargo.n };
-      C.addOp(o); C.watchOrder(o); if(st.tipo!=='AVISO') consume(); else C.log('core','aviso dado de alta: no descuenta firma ni consume operación',{idGlobal:o.idGlobal});
+      C.addOp(o); C.watchOrder(o); if(st.tipo!=='AVISO') consume(); else C.log('core','alerta de precio dada de alta: no descuenta sesión ni consume operación',{idGlobal:o.idGlobal});
       toast(`${st.tipo} enviada a mercado.`,'ok'); return;
     }
     st.live=true; paint(); $('[data-stt]',card).textContent='solicitando precio…'; C.log('fix',`RFS → proveedor: ${st.pair} ${st.dir} ${v.divOp} ${fmtN(st.amount,0)}`,{canal:'WEB'});
@@ -179,13 +180,13 @@ function renderFoot(){
   const f=q('[data-foot]'); if(!f) return;
   if(!firma || firma.consultivo){ f.innerHTML=`<span>Acceso <b>consultivo</b>: puede ver precios pero no operar.</span><span class="grow"></span><span>Para operar, firme <a href="#" data-renew style="color:var(--accent);font-weight:700">aquí</a>.</span><span>☎ 900 813 847</span><span class="tip" data-tip="${BRAND.name} v${BRAND.version}">ⓘ</span>`; }
   else { const left=Math.max(0,firma.until-Date.now()); const low = left < firma.total/4; const mm=String(Math.floor(left/60000)).padStart(2,'0'), ss=String(Math.floor(left%60000/1000)).padStart(2,'0');
-    f.innerHTML=`<span>Operaciones disponibles: <span class="k ${firma.ops!==null&&firma.ops<=1?'low':''}">${firma.ops===null?'∞':firma.ops}</span></span><span>Tiempo restante: <span class="k ${low?'low':''}">${mm}:${ss}</span></span><span class="grow"></span><span>☎ 900 813 847</span><span>Renovar tiempo y operaciones <a href="#" data-renew style="color:var(--accent);font-weight:700">aquí</a></span><span class="tip" data-tip="${BRAND.name} v${BRAND.version}">ⓘ</span>`;
-    if(left<=0 || (firma.ops!==null && firma.ops<=0)){ firma={consultivo:true}; toast('La firma ágil se ha agotado. La sesión pasa a modo consulta.','err'); } }
+    f.innerHTML=`<span>Operaciones disponibles: <span class="k ${firma.ops!==null&&firma.ops<=1?'low':''}">${firma.ops===null?'∞':firma.ops}</span></span><span>Tiempo restante: <span class="k ${low?'low':''}">${mm}:${ss}</span></span><span class="grow"></span><span>☎ 900 813 847</span><span>Renovar sesión <a href="#" data-renew style="color:var(--accent);font-weight:700">aquí</a></span><span class="tip" data-tip="${BRAND.name} v${BRAND.version}">ⓘ</span>`;
+    if(left<=0 || (firma.ops!==null && firma.ops<=0)){ firma={consultivo:true}; toast('La sesión operativa se ha agotado. Pasa a modo consulta.','err'); } }
   $('[data-renew]',f)?.addEventListener('click',e=>{ e.preventDefault(); askFirma(()=>renderFoot()); });
 }
 function renderRPanel(cbs){
   const p=q('[data-rpanel]');
-  p.innerHTML=`<div class="p-head">${BRAND.name} Bróker<span style="flex:1"></span><button class="icon-btn" data-x>✕</button></div><div class="p-body">
+  p.innerHTML=`<div class="p-head">${BRAND.name} Empresas<span style="flex:1"></span><button class="icon-btn" data-x>✕</button></div><div class="p-body">
     <div class="row"><span>Tema</span><span class="seg"><button data-theme="light" class="${S.theme==='light'?'on':''}">Claro</button><button data-theme="sala" class="${S.theme==='sala'?'on':''}">Oscuro</button></span></div>
     <div class="sect">Integración (demo)</div><button class="item" data-console>Consola de integración</button>
     <div class="sect">Sesión</div><button class="item" data-logout>Volver a la web de empresas</button></div><div class="p-foot">${BRAND.name} v${BRAND.version}</div>`;

@@ -80,7 +80,7 @@ export function validatePreTrade({client, ctx, pair, dir, divOp, nominal, tipoOr
   const [base, quote] = pair.split('/');
   if(!nominal || nominal<=0) errs.push('Indique un importe.');
   if(client?.generic){
-    if(tipoOperacion!=='CLAVE DE ARBITRAJE') errs.push('Con cliente genérico solo se pueden realizar claves de arbitraje.');
+    if(tipoOperacion!=='CLAVE DE ARBITRAJE') errs.push('Con cliente por asignar solo se pueden realizar operaciones spot con liquidación externa.');
     log('ws','core.trading.validacionPreTrade', {cliente:'GENÉRICO', resultado: errs.length?'KO':'OK', errs});
     return errs;
   }
@@ -89,9 +89,9 @@ export function validatePreTrade({client, ctx, pair, dir, divOp, nominal, tipoOr
   if(cfg.obsObligatorias && tipoOperacion==='CLAVE DE ARBITRAJE' && !(observaciones||'').trim()) errs.push('Indique el motivo en «Observaciones»: es obligatorio en claves de arbitraje (trazabilidad). Puede relajarlo en Menú → Demo.');
   if(tipoOrden==='FORWARD'){
     if(base!=='EUR' && quote!=='EUR') errs.push('El core no admite forward si ninguna de las divisas es EUR.');
-    if(!ctx.linea) errs.push('Seleccione una línea de seguro de cambio para operar a plazo.');
+    if(!ctx.linea) errs.push('Seleccione una línea de riesgo FX para operar a plazo.');
     else if(![base,quote].includes(ctx.linea.div)) errs.push(`La línea ${ctx.linea.n} es en ${ctx.linea.div} y no cubre ${pair}: elija una línea en ${base} o ${quote}.`);
-    else { const need = importeEnLinea({par:pair, divOp, nominal}, ctx.linea); if(ctx.linea.disp < need) errs.push(`Disponible insuficiente en la línea ${ctx.linea.n}: quedan ${fmt(ctx.linea.disp)} ${ctx.linea.div} y la operación consume ${fmt(need)} ${ctx.linea.div}.`); }
+    else { const need = importeEnLinea({par:pair, divOp, nominal}, ctx.linea); if(ctx.linea.disp < need) errs.push(`Disponible insuficiente en la línea de riesgo ${ctx.linea.n}: quedan ${fmt(ctx.linea.disp)} ${ctx.linea.div} y la operación consume ${fmt(need)} ${ctx.linea.div}.`); }
   } else {
     if(tipoOperacion==='CONVERSIÓN'){
       if(!ctx.cargo || !ctx.abono) errs.push('Seleccione cuenta de cargo y de abono coherentes con el par.');
@@ -99,7 +99,6 @@ export function validatePreTrade({client, ctx, pair, dir, divOp, nominal, tipoOr
       else if(ctx.cargo.div===ctx.abono.div) errs.push('Cuenta de cargo y abono no pueden ser de la misma divisa.');
       else { const cargoAmt = divOp===ctx.cargo.div ? nominal : contravalor(pair, nominal, divOp, RATES[pair]?.mid||1); if(ctx.cargo.saldo!==undefined && cargoAmt > ctx.cargo.saldo) errs.push(`Saldo insuficiente en la cuenta de cargo ${ctx.cargo.n}: ${fmt(ctx.cargo.saldo)} ${ctx.cargo.div} disponibles, la operación necesita ${fmt(cargoAmt)} ${ctx.cargo.div}.`); }
     }
-    if(ctx.linea && ctx.linea.n.startsWith('89') && tipoOperacion!=='CLAVE DE ARBITRAJE' && ctx.useLineaForSpot) errs.push('Una línea de crédito (89) solo admite forward, no contado.');
   }
   log('ws','core.trading.validacionPreTrade', {nif:client?.nif, par:pair, tipoOrden, nominal, resultado: errs.length?'KO':'OK', errs});
   return errs;
@@ -108,7 +107,7 @@ export function validatePreTrade({client, ctx, pair, dir, divOp, nominal, tipoOr
 // ---------- comisión (regla del sistema de referencia): 25 € hasta 100.000 de nominal, 0 a partir de ahí ----------
 export function comision(nominal){ return nominal <= 100000 ? 25 : 0; }
 
-// ---------- línea de seguro de cambio (89 …): consumo y restauración ----------
+// ---------- línea de riesgo FX (LR …): consumo y restauración ----------
 const fmt = n => new Intl.NumberFormat('es-ES',{maximumFractionDigits:0}).format(n);
 export function lineaByCuenta(n){ for(const c of CLIENTS){ const l = c.lineas.find(x=>x.n===n); if(l) return l; } return null; }
 // nominal de la operación expresado en la divisa de la línea (si no coincide, se pasa por el mid del par)
@@ -124,7 +123,7 @@ export function applyLinea(o, {silent=false}={}){
   const devuelve = /ANTICIPO|CANCELACI/.test(o.tipoOp);
   l.disp = Math.max(0, Math.min(l.limite, devuelve ? l.disp + imp : l.disp - imp));
   o.lineaAplicada = true;
-  if(!silent) log('core', devuelve ? 'línea de seguro de cambio: importe restaurado' : 'línea de seguro de cambio: importe consumido', {linea:l.n, importe:+imp.toFixed(2), divisa:l.div, disponible:+l.disp.toFixed(2), limite:l.limite});
+  if(!silent) log('core', devuelve ? 'línea de riesgo FX: importe restaurado' : 'línea de riesgo FX: importe consumido', {linea:l.n, importe:+imp.toFixed(2), divisa:l.div, disponible:+l.disp.toFixed(2), limite:l.limite});
 }
 
 // ---------- operaciones (la "BBDD" de la plataforma) ----------
@@ -135,15 +134,15 @@ export function notifyOps(){ for(const f of opSubs) f(); }
 export function addOp(o){ ops.unshift(o); notifyOps(); return o; }
 export function updateOp(o, patch){ Object.assign(o, patch); notifyOps(); }
 
-// DO1: la operación ejecutada viaja al core por cola. Solo si el markup está completado.
+// Alta: la operación ejecutada viaja al core por cola. Solo si el margen está confirmado.
 export function sendDO1(o){
-  const msg = { tipo:'DO1', idGlobal:o.idGlobal, referencia:o.ref, cliente:o.cliente, canal:o.canal, par:o.par, direccion:o.dir, nominal:o.nominal, contravalor:+o.contra.toFixed(2),
-    precioSpot:o.precioOficina, precioFinalCliente:o.precioCliente, fechaValor:o.fechaValor, cuenta:o.cuenta, aypTicket:o.ayp||'N', timestampPrecio:o.tsPrecio, IS:'N', switch: cfg.switchOn?'ON':'OFF' };
-  log('mq','DO1 → cola MQ (asiento en core)', msg);
-  if(cfg.switchOn) log('core','core → sistema de tesorería (flujo de integración habitual)', {ref:o.ref, libro:'SALA'});
+  const msg = { tipo:'ALTA_OPERACION', idGlobal:o.idGlobal, referencia:o.ref, cliente:o.cliente, canal:o.canal, par:o.par, direccion:o.dir, nominal:o.nominal, contravalor:+o.contra.toFixed(2),
+    precioSpot:o.precioOficina, precioFinalCliente:o.precioCliente, fechaValor:o.fechaValor, cuenta:o.cuenta, aypTicket:o.ayp||'N', timestampPrecio:o.tsPrecio, IS:'N', cobertura: cfg.switchOn?'LIBROS':'MERCADO' };
+  log('mq','alta de operación → cola MQ (asiento en core)', msg);
+  if(cfg.switchOn) log('core','cobertura en libros → sistema de tesorería', {ref:o.ref, libro:'MESA'});
   else log('fix','proveedor cubre en mercado → interbancario a tesorería', {ref:o.ref});
 }
-export function sendDO2(o){ log('mq','DO2 → cola MQ', {idGlobal:o.idGlobal, ref:o.ref, evento:o.estado}); }
+export function sendDO2(o){ log('mq','evento de ciclo de vida → cola MQ', {idGlobal:o.idGlobal, ref:o.ref, evento:o.estado}); }
 
 // ---------- máquina de estados ----------
 // Solicitud pendiente → Precio recibido → Validando operación → (Orden rechazada | Rechazada en mercado)
@@ -168,7 +167,7 @@ export async function executeDeal(o, {onState, preErrors}){
   if(cfg.rechazosAleatorios && Math.random()<0.02){ o.motivo='El core rechazó el asiento'; set('Rechazada'); return o; }
   sendDO1(o); applyLinea(o); set('Ejecutada'); return o;
 }
-// Completar markup a posteriori: entonces sí viaja al core
+// Confirmar el margen a posteriori: entonces sí viaja al core
 export async function completeMarkup(o){
   o.markupOk = true; o.estado='Ejecutando'; notifyOps(); await wait(600); sendDO1(o); applyLinea(o); updateOp(o,{estado:'Ejecutada'});
 }

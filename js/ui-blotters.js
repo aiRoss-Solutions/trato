@@ -2,6 +2,7 @@
 import { $, $$, h, esc, fmtN, cmenu, downloadCSV, toast, stateChip } from './ui.js';
 import * as C from './core.js';
 import { S } from './state.js';
+import { label as gl, orderType as got, channel as gchan } from './glossary.js';
 import { es } from './prices.js';
 
 const OL_TYPES = ['ORDEN LIMITADA','CALL ORDER','AVISO'];
@@ -16,29 +17,29 @@ const N = (v,d=2) => v===undefined||v===null ? '—' : fmtN(v,d);
 // definición de columnas por blotter (nombre, getter, alineación)
 const COLS = {
   ejecutadas: [
-    ['Fecha operación', o=>D(o.fechaOp)], ['Referencia', o=>o.ref||'—'], ['Tipo orden', o=>o.tipoOrden], ['Tipo operación', o=>o.tipoOp],
+    ['Fecha operación', o=>D(o.fechaOp)], ['Referencia', o=>o.ref||'—'], ['Tipo orden', o=>got(o.tipoOrden)], ['Tipo operación', o=>gl(o.tipoOp)],
     ['Importe compra', o=>N(legs(o).ic),'num'], ['Divisa compra', o=>legs(o).dc], ['Importe venta', o=>N(legs(o).iv),'num'], ['Divisa venta', o=>legs(o).dv],
     ['Fecha valor', o=>D(o.fechaValor)], ['Precio cliente', o=>N(o.precioCliente, dec(o)),'num'], ['Precio oficina', o=>N(o.precioOficina, dec(o)),'num'],
     ['Importe liquidación', o=>N(o.contra),'num'], ['Cuenta operativa', o=>o.cuenta||'—'], ['Cuenta operativa 2', o=>o.cuenta2||'—'],
     ['Fecha arbitraje', o=>D(o.fechaArbitraje)], ['Fecha disponibilidad', o=>D(o.fechaDispCliente)], ['Importe disponible', o=>o.dispon!==undefined?N(o.dispon):'—','num'],
-    ['Fecha ejecución', o=>D(o.fechaEjec)], ['Hora ejecución', o=>o.hora||'—'], ['Usuario operación', o=>o.usuario], ['Canal operación', o=>o.canal]
+    ['Fecha ejecución', o=>D(o.fechaEjec)], ['Hora ejecución', o=>o.hora||'—'], ['Usuario operación', o=>o.usuario], ['Canal operación', o=>gchan(o.canal)]
   ],
   ordenes: [
     ['Fecha operación', o=>D(o.fechaOp)], ['Fecha ejecución', o=>D(o.fechaEjec)], ['Hora ejecución', o=>o.hora||'—'], ['ID Global', o=>o.idGlobal],
-    ['Tipo orden', o=>o.tipoOrden], ['Tipo operación', o=>o.tipoOp], ['Estado', o=>stateChip(o.estado, C.STATES),'st'], ['Par', o=>o.par],
+    ['Tipo orden', o=>got(o.tipoOrden)], ['Tipo operación', o=>gl(o.tipoOp)], ['Estado', o=>stateChip(o.estado, C.STATES),'st'], ['Par', o=>o.par],
     ['Importe compra', o=>N(legs(o).ic),'num'], ['Divisa compra', o=>legs(o).dc], ['Importe venta', o=>N(legs(o).iv),'num'], ['Divisa venta', o=>legs(o).dv],
-    ['Fecha valor vto', o=>D(o.fechaValor)], ['Precio límite', o=>N(o.precioLimite, dec(o)),'num'], ['Fecha validez', o=>D(o.fechaValidez)], ['Usuario operación', o=>o.usuario], ['Canal operación', o=>o.canal]
+    ['Fecha valor vto', o=>D(o.fechaValor)], ['Precio límite', o=>N(o.precioLimite, dec(o)),'num'], ['Fecha validez', o=>D(o.fechaValidez)], ['Usuario operación', o=>o.usuario], ['Canal operación', o=>gchan(o.canal)]
   ],
   usuario: [
     ['Fecha operación', o=>D(o.fechaOp)], ['Fecha ejecución', o=>D(o.fechaEjec)], ['ID Global', o=>o.idGlobal], ['Referencia', o=>o.ref||'—'], ['Nombre cliente', o=>o.clienteNombre || C.clients().find(c=>c.id===o.cliente)?.nombre || o.cliente],
-    ['Tipo orden', o=>o.tipoOrden], ['Tipo operación', o=>o.tipoOp], ['Tipo op. asociada', o=>o.asociada||'—'], ['Estado', o=>stateChip(o.estado, C.STATES),'st'], ['Par divisas', o=>o.par],
+    ['Tipo orden', o=>got(o.tipoOrden)], ['Tipo operación', o=>gl(o.tipoOp)], ['Tipo op. asociada', o=>o.asociada||'—'], ['Estado', o=>stateChip(o.estado, C.STATES),'st'], ['Par divisas', o=>o.par],
     ['Nominal compra', o=>N(legs(o).ic),'num'], ['Divisa compra', o=>legs(o).dc], ['Nominal venta', o=>N(legs(o).iv),'num'], ['Divisa venta', o=>legs(o).dv],
     ['Fecha valor', o=>D(o.fechaValor)], ['Precio cliente', o=>N(o.precioCliente, dec(o)),'num'], ['Precio oficina', o=>N(o.precioOficina, dec(o)),'num'],
-    ['Markup', o=>o.markupOk?'COMPLETADO':'NO COMPLETADO'], ['Observaciones', o=>o.obs||'—'], ['Canal', o=>o.canal]
+    ['Margen', o=>o.markupOk?'CONFIRMADO':'SIN CONFIRMAR'], ['Observaciones', o=>o.obs||'—'], ['Canal', o=>gchan(o.canal)]
   ]
 };
 // P-005: lo que el cliente final (canal WEB) no debe ver nunca
-const SOLO_INTERNO = new Set(['Precio oficina','Usuario operación','Canal operación','Canal','Markup','Observaciones']);
+const SOLO_INTERNO = new Set(['Precio oficina','Usuario operación','Canal operación','Canal','Margen','Observaciones']);
 function dec(o){ try{ return o.par.includes('JPY')||o.par.includes('HUF') ? 2 : (o.par.includes('MXN')||o.par.includes('TRY')||o.par.includes('CZK')) ? 3 : 4; }catch{ return 4; } }
 
 // ---------- selección de filas por pestaña ----------
@@ -72,7 +73,7 @@ export function renderDock(root, {perms, onAction}){
     <span class="sub ${d.tab==='cliente'?'':'hide'}">
       <button data-sub="ejecutadas" class="${d.sub==='ejecutadas'?'on':''}">Ejecutadas</button>
       <button data-sub="ol" class="${d.sub==='ol'?'on':''}">Órdenes limitadas</button>
-      <button data-sub="co" class="${d.sub==='co'?'on':''}">Call orders / Avisos</button>
+      <button data-sub="co" class="${d.sub==='co'?'on':''}">Alertas</button>
     </span>
     <button data-tab="posicion" class="${d.tab==='posicion'?'on':''}" ${disabledCli?'disabled title="Sin cliente"':''}>Posición en seguros de cambio</button>
     <button data-tab="usuario" class="${d.tab==='usuario'?'on':''}">Operaciones del usuario</button>
@@ -156,8 +157,8 @@ function rowMenu(e, o, kind, perms, onAction){
   }
   if(kind==='ol'||kind==='co'){ items.push({label:'Cancelar orden', disabled: o.estado!=='Orden enviada a mercado' || (o.fechaValidez && o.fechaValidez < today), onClick:()=>onAction('cancelarOrden', o)}); }
   if(kind==='usuario'){
-    if(!o.markupOk && o.estado==='Confirmada en mercado') items.push({label:'Completar markup', onClick:()=>onAction('completarMarkup', o)});
-    if(o.cliente==='GEN' && o.estado==='Ejecutada') items.push({label:'Cancelar operación (reasignar a cliente real)', onClick:()=>onAction('cancelarGenerica', o)});
+    if(!o.markupOk && o.estado==='Confirmada en mercado') items.push({label:'Confirmar margen', onClick:()=>onAction('completarMarkup', o)});
+    if(o.cliente==='GEN' && o.estado==='Ejecutada') items.push({label:'Reasignar a cliente real (cancela la operación sin asignar)', onClick:()=>onAction('cancelarGenerica', o)});
     if(OL_TYPES.includes(o.tipoOp) && o.estado==='Orden enviada a mercado') items.push({label:'Cancelar orden', onClick:()=>onAction('cancelarOrden', o)});
   }
   items.push('-'); items.push({label:'Más info', onClick:()=>onAction('masInfo', o)});
@@ -166,7 +167,7 @@ function rowMenu(e, o, kind, perms, onAction){
 function renderPosicion(body){
   // Posición viva = nominal pendiente de disponer de cada seguro (anticipos y cancelaciones ya descontados en `dispon`)
   const c = S.client; const list = C.ops.filter(o=>o.cliente===c.id && o.estado==='Ejecutada' && /^SEGURO DE CAMBIO/.test(o.tipoOp) && (o.dispon ?? o.nominal) > 0);
-  if(!list.length){ body.innerHTML='<div class="empty">Sin posición viva en seguros de cambio.</div>'; return; }
+  if(!list.length){ body.innerHTML='<div class="empty">Sin posición viva en forwards.</div>'; return; }
   const buckets = ['≤ 1M','1M – 3M','3M – 6M','6M – 12M','> 12M'];
   const bucketOf = d => { const days=(new Date(d)-new Date())/86400000; return days<=31?0:days<=92?1:days<=183?2:days<=366?3:4; };
   const pos = {};
