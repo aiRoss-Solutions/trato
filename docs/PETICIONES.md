@@ -55,6 +55,7 @@ _(vacío)_
 | L-tip-1 | prototipo autocontenido con **XLS como reference data** que se lee al arrancar (contratos, usuarios, pares, operaciones previas); primero exportar a xls lo que se ve, luego alimentar a mano | mejora | 🗺 roadmap R-01 |
 | L-tip-2 | conectar el **market data a Yahoo Finance** para que el precio sea real, no random | mejora | 🗺 roadmap R-02 (ojo CORS desde GitHub Pages: hará falta un proxy o un fichero de precios refrescado por Action) |
 | L-tip-3 | **multi-idioma por usuario**; cuidado con la traducción de "seguros de cambio" | mejora | 🗺 roadmap R-03 (ya existe el conmutador ES/EN sin textos; el glosario EN lo fija negocio: *FX forward*, no traducción literal) |
+| L-mail-16sep | correo «Bankinter — el hueco está en distribución»: reforzar despliegue agéntico con conocimiento de distribución + arquitectura; "que no vean una solución de IA sino agéntica"; comprobar si a Murex llegan hechos y no órdenes; "no tienen estructuras en 2Trade" | estratégico | ya recogido en el guion de la reunión (adendas) y en R-07; no toca el prototipo |
 | L-estrategia | cómo contarlo: no decir "lo hice en un rato con IA"; sí "rehicimos el frontal en una semana desde las specs originales"; no decir que tenemos el código fuente; añadir 3-4 puntos de mejora (multiproducto, microservicios, renovación tecnológica) | discurso | anotado para Maxi; no toca código |
 
 ## Roadmap (mejoras, no correctivos) — para la versión mejorada
@@ -64,6 +65,8 @@ _(vacío)_
 | R-02 | Market data real (Yahoo Finance u otra fuente pública) con refresco periódico y fallback al random walk | Lucio tip 2 | CORS: proxy mínimo o fichero JSON regenerado por GitHub Action cada N minutos |
 | R-03 | Multi-idioma por usuario (ES/EN) con glosario de negocio validado | Lucio tip 3 · B-02 | "seguro de cambio" → *FX forward*; "clave de arbitraje" → *FX spot (non-account)* a validar |
 | R-04 | Capa "nuevo" aiRoss: P-012 tope mark-up, P-013 trazabilidad de cotizaciones no cerradas, P-014 multibanco, P-015 explicación del precio | Camilo | aparcadas por decisión de Maxi (20-sep) |
+| R-07 | **Multiproducto**: estructurados y derivados de terceros en la distribución ("no tienen estructuras", mail de Lucio 16-sep y su tip de discurso 21-sep) | Lucio | mejora de producto, decidir con Maxi cuándo abre la capa nueva |
+| R-06 | Precios coherentes entre ventanas (una ventana maestra de market data) | UNKNOWNS #13 | con R-02 |
 | R-05 | Rediseño v0.3: layout propio (no clon), navegación vertical de operaciones, barra de cliente abajo, ≥ 2 filas de paneles, multiventana para varias pantallas | Maxi 21-sep | ✅ v0.3.0 en rama `v0.3-layout` → `/v3/` (ver CHANGELOG) |
 
 ## Backlog propuesto v0.1 (ordenado)

@@ -53,6 +53,7 @@ function renderTopbar(){
     <span class="seg mode"><button data-mode="SPOTFWD" class="${S.mode==='SPOTFWD'?'on':''}">Spot · Fwd</button><button data-mode="FLEX" class="${S.mode==='FLEX'?'on':''}">Flexible</button></span>
     <button class="chip" data-rfs title="Órdenes limitadas y alertas">Órdenes</button>
     <button class="chip" data-k title="Paleta de comandos (⌘K / Ctrl+K): cliente, par, acción">⌘K</button>
+    <button class="chip" data-wins title="Abrir paneles en ventanas propias para repartir la mesa en varias pantallas">⧉ Ventanas</button>
     <div class="tright">
       <span class="sysclock mono" data-clock title="Fecha y hora del sistema"></span><span class="envchip ${envLabel().toLowerCase()}" title="Entorno">${envLabel()}</span>
       <span class="chip">${esc(S.user.nombre)} · <span class="mono">${esc(gchan(S.user.canal))}</span></span>
@@ -63,6 +64,18 @@ function renderTopbar(){
   q('[data-ws]').onclick = openWorkspaces;
   q('[data-rfs]').onclick = ()=>openOrderBoleta({perms, onDone:renderActivity});
   q('[data-k]').onclick = openPalette;
+  q('[data-wins]').onclick = e => cmenu(e.clientX, e.clientY, [
+    {label:'⧉ Actividad', onClick:()=>popout('actividad')}, {label:'⧉ Precios (tiles)', onClick:()=>popout('precios')}, {label:'⧉ Posición viva', onClick:()=>popout('posicion')},
+    {label:'⧉ Órdenes y alertas vivas', onClick:()=>popout('ordenes')}, {label:'⧉ Estado de la plataforma', onClick:()=>popout('plataforma')}, {label:'⧉ Últimas operaciones', onClick:()=>popout('ultimas')}, {label:'⧉ Consola de integración', onClick:()=>popout('consola')},
+    '-', {label:'Restaurar disposición guardada', onClick:restoreLayout}, {label:'Olvidar disposición', onClick:forgetLayout},
+    '-', {label:'¿Cómo funciona?', onClick:()=>modal({ title:'Multiventana', width:560, body:`<div class="notice">Cada panel de la mesa se puede sacar a una <b>ventana propia del navegador</b> para llevarlo a otra pantalla, como hacen traders y ventas.</div>
+      <ol style="margin:12px 0 0 18px;line-height:1.7;font-size:13px">
+        <li>Pulsá <b>⧉</b> en un panel (o elegí uno en este menú). Se abre una ventana nueva solo con ese panel.</li>
+        <li>Arrastrá esa ventana al otro monitor. <b>Todo sigue sincronizado</b>: cliente, operaciones, líneas, tema. Si ejecutás algo en una ventana, aparece en las demás al instante.</li>
+        <li>Al volver a entrar, Trato te ofrece <b>«Restaurar disposición»</b> con los paneles que tenías fuera.</li>
+      </ol>
+      <p class="tiny muted" style="margin-top:10px">Si el navegador bloquea la ventana, permití ventanas emergentes para este sitio o usá el enlace «abrir en pestaña nueva» que aparece.</p>`, actions:[{label:'Entendido',cls:'btn-primary',onClick:a=>a.close()}] })}
+  ]);
   q('[data-menu]').onclick = ()=>q('[data-rpanel]').classList.toggle('open');
 }
 

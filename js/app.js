@@ -10,11 +10,11 @@ import * as SYNC from './sync.js';
 import { mountBroker } from './ui-broker.js';
 
 const root = $('#root');
-S.theme = localStorage.getItem('trato.theme') || 'sala';   // v0.3: la mesa arranca en navy
+S.theme = localStorage.getItem('trato.theme.v3') || 'sala';   // v0.3: la mesa arranca en navy (clave nueva: no hereda el 'claro' guardado por v0.2)
 applyTheme(S.theme);
 PX.start();
 
-function applyTheme(t){ S.theme=t; localStorage.setItem('trato.theme',t); document.documentElement.dataset.theme = t==='sala'?'sala':''; SYNC.send('theme', t); }
+function applyTheme(t){ S.theme=t; localStorage.setItem('trato.theme.v3',t); document.documentElement.dataset.theme = t==='sala'?'sala':''; SYNC.send('theme', t); }
 
 function login(){
   document.documentElement.dataset.theme='';
