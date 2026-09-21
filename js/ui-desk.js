@@ -37,7 +37,7 @@ export function mountDesk(el, user, {onLogout, onToggleConsole, onTheme}){
   clearInterval(staleTimer); staleTimer = setInterval(()=>{ paintStale(); paintPlatform(); }, 1000);
   document.removeEventListener('keydown', onGlobalKey); document.addEventListener('keydown', onGlobalKey);
   panelMode = null; syncUnsub.forEach(f=>f()); syncUnsub = [ SYNC.on('hello-ctx', ()=>broadcastCtx()), SYNC.on('ctx', p=>{ applyCtx(p); rerenderAll(); }) ];
-  broadcastCtx();
+  broadcastCtx(); syncUnsub.push(SYNC.on('panel-closed', p=>layoutMark(p.panel,false))); setTimeout(offerRestore, 800);
 }
 let syncUnsub = [];
 let cbsRef = null;
@@ -142,6 +142,7 @@ export function mountPanel(el, user, panel){
   unsubs.forEach(f=>f()); unsubs = [ C.onOps(paint), SYNC.on('ctx', p=>{ applyCtx(p); paint(); }) ];
   if(panel==='precios') unsubs.push(PX.subscribe(onTick));
   clearInterval(staleTimer); staleTimer = setInterval(()=>{ paintStale(); if(panel==='plataforma') paint(); }, 1000);
+  window.addEventListener('beforeunload', ()=>SYNC.send('panel-closed',{panel}));
   SYNC.send('hello', {panel});      // pide operaciones y contexto a la mesa
   SYNC.send('hello-ctx', {panel});
 }
@@ -338,12 +339,25 @@ function renderPanels(){
 function paintPlatform(){ const b = $('[data-panel="plataforma"] [data-pbody]', root); if(b) paintPanel('plataforma', b); }
 
 // ---------------- multiventana (bloque 6): por ahora abre la ruta del panel ----------------
-export function popout(panel){
+const layoutKey = () => 'trato.layout.'+(S.user?.user||'anon');
+function layoutLoad(){ try{ return JSON.parse(localStorage.getItem(layoutKey())||'{"popped":[]}'); }catch{ return {popped:[]}; } }
+function layoutSave(l){ try{ localStorage.setItem(layoutKey(), JSON.stringify(l)); }catch{} }
+function layoutMark(panel, open){ const l=layoutLoad(); l.popped = open ? [...new Set([...l.popped, panel])] : l.popped.filter(p=>p!==panel); layoutSave(l); }
+export function restoreLayout(){ const l=layoutLoad(); if(!l.popped.length){ toast('No hay disposición guardada.'); return; } l.popped.forEach((p,i)=>setTimeout(()=>popout(p,{restoring:true}), i*150)); }
+export function forgetLayout(){ layoutSave({popped:[]}); toast('Disposición olvidada.','ok'); }
+function offerRestore(){
+  const l=layoutLoad(); if(!l.popped.length) return;
+  const n=h(`<div class="toast" role="status">Tenías ${l.popped.length} panel${l.popped.length>1?'es':''} en ventanas propias (${esc(l.popped.join(', '))}). <button class="btn btn-primary btn-sm" data-r style="margin-left:8px">Restaurar disposición</button> <button class="btn btn-ghost btn-sm" data-f>Olvidar</button></div>`);
+  let box=document.querySelector('.toasts'); if(!box){ box=h('<div class="toasts" role="status" aria-live="polite"></div>'); document.body.appendChild(box); }
+  box.appendChild(n); $('[data-r]',n).onclick=()=>{ n.remove(); restoreLayout(); }; $('[data-f]',n).onclick=()=>{ n.remove(); forgetLayout(); };
+  setTimeout(()=>n.remove(), 20000);
+}
+export function popout(panel, {restoring=false}={}){
   if(panelMode){ toast('Ya estás en una ventana de panel: abre las demás desde la mesa.'); return; }
   const url = `./?panel=${encodeURIComponent(panel)}&ch=${encodeURIComponent(S.user.canal)}${S.client?'&cli='+encodeURIComponent(S.client.id):''}`;
   const w = window.open(url, 'trato-'+panel, 'popup=yes,width=520,height=720');
   if(!w){ modal({ title:'Ventana bloqueada por el navegador', width:460, body:`<div class="notice">El navegador ha bloqueado la ventana emergente. Permita ventanas para este sitio o ábrala a mano:</div><p style="margin-top:10px"><a class="btn btn-primary btn-sm" href="${url}" target="_blank" rel="opener">Abrir «${esc(panel)}» en una pestaña nueva</a></p>`, actions:[{label:'Cerrar',onClick:a=>a.close()}] }); return; }
-  C.log('core',`panel «${panel}» abierto en ventana propia`,{});
+  layoutMark(panel, true); C.log('core',`panel «${panel}» abierto en ventana propia`,{});
 }
 
 // ---------------- paleta de comandos ⌘K ----------------
@@ -389,7 +403,7 @@ function renderRPanel({onLogout,onToggleConsole,onTheme}){
       <div class="sect">Operativa</div>
       <button class="item" data-go="SPOTFWD">Spot / Forward</button><button class="item" data-go="FLEX">Seguro de cambio flexible</button><button class="item" data-go="RFS">Órdenes y alertas</button>
       <div class="sect">Vista</div>
-      <button class="item" data-go="WS">Workspaces</button><button class="item" data-go="ACT">Plegar / desplegar actividad</button><button class="item" data-go="CTX">Plegar / desplegar contexto de cliente</button><button class="item" data-go="K">Paleta de comandos ⌘K</button>
+      <button class="item" data-go="WS">Workspaces</button><button class="item" data-go="ACT">Plegar / desplegar actividad</button><button class="item" data-go="CTX">Plegar / desplegar contexto de cliente</button><button class="item" data-go="K">Paleta de comandos ⌘K</button><div class="sect">Ventanas</div><button class="item" data-go="POPACT">Actividad en ventana ⧉</button><button class="item" data-go="POPPX">Precios en ventana ⧉</button><button class="item" data-go="POPPOS">Posición en ventana ⧉</button><button class="item" data-go="RESTORE">Restaurar disposición guardada</button><button class="item" data-go="FORGET">Olvidar disposición</button>
       <div class="row"><span>Tema</span><span class="seg"><button data-theme="light" class="${S.theme==='light'?'on':''}">Claro</button><button data-theme="sala" class="${S.theme==='sala'?'on':''}">Navy</button></span></div>
       <div class="row"><span>Idioma</span><span class="seg"><button class="on">ES</button><button disabled title="Pendiente">EN</button></span></div>
       <div class="sect">Integración (demo)</div>
@@ -403,7 +417,7 @@ function renderRPanel({onLogout,onToggleConsole,onTheme}){
   $('[data-x]',p).onclick=()=>p.classList.remove('open');
   $$('[data-go]',p).forEach(b=>b.onclick=()=>{ const g=b.dataset.go; p.classList.remove('open');
     if(g==='SPOTFWD'||g==='FLEX'){ S.mode=g; renderTopbar(); renderCenter(); } else if(g==='RFS') openOrderBoleta({perms,onDone:renderActivity}); else if(g==='WS') openWorkspaces();
-    else if(g==='ACT'){ S.act.collapsed=!S.act.collapsed; renderActivity(); } else if(g==='CTX'){ S.ctxbar.collapsed=!S.ctxbar.collapsed; renderCtxBar(); } else if(g==='K') openPalette();
+    else if(g==='ACT'){ S.act.collapsed=!S.act.collapsed; renderActivity(); } else if(g==='CTX'){ S.ctxbar.collapsed=!S.ctxbar.collapsed; renderCtxBar(); } else if(g==='K') openPalette(); else if(g==='POPACT') popout('actividad'); else if(g==='POPPX') popout('precios'); else if(g==='POPPOS') popout('posicion'); else if(g==='RESTORE') restoreLayout(); else if(g==='FORGET') forgetLayout();
     else if(g==='CONSOLE') onToggleConsole(); else if(g==='CONSOLEWIN') popout('consola'); else if(g==='LOGOUT') onLogout(); });
   $$('[data-theme]',p).forEach(b=>b.onclick=()=>{ onTheme(b.dataset.theme); renderRPanel({onLogout,onToggleConsole,onTheme}); });
   $('[data-rechazos]',p).onclick=()=>{ C.cfg.rechazosAleatorios=!C.cfg.rechazosAleatorios; C.log('core',`Rechazos aleatorios ${C.cfg.rechazosAleatorios?'ON':'OFF'}`,{}); renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); };

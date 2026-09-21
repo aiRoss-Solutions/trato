@@ -1,5 +1,5 @@
 // Trato · datos simulados del core bancario. Todo ficticio y en memoria, nada real.
-export const BRAND = { name:'Trato', tagline:'Distribución FX · mesa, banca telefónica y empresas', version:'0.2.1' };
+export const BRAND = { name:'Trato', tagline:'Distribución FX · mesa, banca telefónica y empresas', version:'0.3.0' };
 
 export const PAIRS = [
   'EUR/USD','EUR/GBP','EUR/CHF','EUR/JPY','EUR/CAD','EUR/AUD','EUR/NZD','EUR/SEK','EUR/NOK','EUR/DKK',
