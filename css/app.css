@@ -470,3 +470,19 @@ input.req,.tile .amt.req{border-color:var(--down)!important;box-shadow:0 0 0 3px
 .main.v3 .tile .foot>div:first-child span{color:var(--market)}
 .main.v3 .tile .stale span{color:var(--warn)}
 @media (max-width:900px){ .work{grid-template-columns:1fr} .activity{display:none} .row2{grid-template-columns:1fr} .ctx-kv{grid-template-columns:repeat(2,1fr)} }
+
+/* ===== ventanas de panel (⧉): una sola pieza de la mesa, sincronizada ===== */
+html.is-panel,html.is-panel body{height:100%;overflow:hidden}
+.pwin{display:grid;grid-template-rows:auto minmax(0,1fr);height:100vh;background:var(--bg)}
+.pw-head{display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--line-2);background:var(--bg-panel)}
+.pw-head .pw-title{font-weight:600;font-size:13px}
+.pw-head .pw-cli{font-size:11px;color:var(--ink-2);padding:2px 8px;border:1px solid var(--line);border-radius:10px}
+.pw-head .grow{flex:1}
+.syncdot{width:8px;height:8px;border-radius:50%;background:var(--up);box-shadow:0 0 0 3px rgba(18,161,80,.18)}
+.pw-body{min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.pw-body .activity{border-left:0;flex:1;min-height:0}
+.pw-body .panel.card{flex:1;margin:10px;min-height:0}
+.pw-body .center.one{grid-template-rows:minmax(0,1fr);overflow:auto;padding:10px}
+.pw-body .row1 .grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.console.static{position:static;transform:none;width:auto;flex:1;min-height:0;border:0}
+.console.static .c-body{overflow:auto}

@@ -6,6 +6,7 @@ import { S, resetTilesFromWorkspace } from './state.js';
 import { PAIRS, TENORS, FLAGS, BRAND, CLIENTS } from './data.js';
 import { label as gl, chip as gchip, t as gt, channel as gchan } from './glossary.js';
 import { renderDock, renderPosicion, rowMenu } from './ui-blotters.js';
+import * as SYNC from './sync.js';
 import { openTicket, openOrderBoleta, openAnticipo, openCancelacion, openCancelGenerica, masInfo } from './ui-ticket.js';
 
 let root, perms, unsubs = [];
@@ -35,7 +36,10 @@ export function mountDesk(el, user, {onLogout, onToggleConsole, onTheme}){
   unsubs.forEach(f=>f()); unsubs = [ PX.subscribe(onTick), C.onOps(()=>{ renderActivity(); renderPanels(); renderCtxBar(); }) ];
   clearInterval(staleTimer); staleTimer = setInterval(()=>{ paintStale(); paintPlatform(); }, 1000);
   document.removeEventListener('keydown', onGlobalKey); document.addEventListener('keydown', onGlobalKey);
+  panelMode = null; syncUnsub.forEach(f=>f()); syncUnsub = [ SYNC.on('hello-ctx', ()=>broadcastCtx()), SYNC.on('ctx', p=>{ applyCtx(p); rerenderAll(); }) ];
+  broadcastCtx();
 }
+let syncUnsub = [];
 let cbsRef = null;
 function onGlobalKey(e){
   if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); openPalette(); }
@@ -55,7 +59,7 @@ function renderTopbar(){
       <button class="icon-btn" data-menu title="Menú">☰</button>
     </div>`;
   clearInterval(clockTimer); clockTimer = sysClock(q('[data-clock]'));
-  $$('[data-mode]',q('[data-topbar]')).forEach(b=>b.onclick=()=>{ S.mode=b.dataset.mode; renderTopbar(); renderCenter(); });
+  $$('[data-mode]',q('[data-topbar]')).forEach(b=>b.onclick=()=>{ S.mode=b.dataset.mode; renderTopbar(); renderCenter(); broadcastCtx(); });
   q('[data-ws]').onclick = openWorkspaces;
   q('[data-rfs]').onclick = ()=>openOrderBoleta({perms, onDone:renderActivity});
   q('[data-k]').onclick = openPalette;
@@ -90,21 +94,58 @@ function renderCtxBar(){
   cli.onchange = e => selectClient(e.target.value);
   cli.oninput = e => { const v=e.target.value.trim(); if(CLIENTS.some(x=>x.nombre===v || x.nif===v) || /^cliente (gen[ée]rico|por asignar)$/i.test(v)) selectClient(v); };
   cli.onkeydown = e => { if(e.key==='Enter'){ e.preventDefault(); selectClient(e.target.value); } };
-  $$('[data-ctx]', bar).forEach(sl=>sl.onchange = ()=>{ const k=sl.dataset.ctx; const list = k==='linea'? c.lineas : k==='ordenante'? c.ordenantes : c.cuentas; S.ctx[k] = list[+sl.value]; renderCtxBar(); C.log('core','contexto de operación', {[k]: S.ctx[k]?.n || S.ctx[k]?.nif}); });
+  $$('[data-ctx]', bar).forEach(sl=>sl.onchange = ()=>{ const k=sl.dataset.ctx; const list = k==='linea'? c.lineas : k==='ordenante'? c.ordenantes : c.cuentas; S.ctx[k] = list[+sl.value]; renderCtxBar(); broadcastCtx(); C.log('core','contexto de operación', {[k]: S.ctx[k]?.n || S.ctx[k]?.nif}); });
   $('[data-fold]',bar).onclick = ()=>{ S.ctxbar.collapsed=!S.ctxbar.collapsed; renderCtxBar(); };
 }
 function selectClient(val){
   val = (val||'').trim(); if(!val){ S.client=null; S.ctx={cargo:null,abono:null,linea:null,ordenante:null}; rerenderAll(); return; }
   if(/gen[ée]rico|por asignar/i.test(val)){ if(!perms.generico){ toast('Su perfil no tiene permiso para operar con cliente por asignar.','err'); return; } if(!S.client){ toast('Conéctese primero con un cliente real para poder operar con cliente por asignar.','err'); return; }
-    S.client = C.generic(); S.ctx={cargo:null,abono:null,linea:null,ordenante:null}; S.tiles.forEach(t=>t.tipo='OTROS'); C.log('core','cliente por asignar activado', {}); toast('Cliente por asignar: solo spot, sin margen de cliente; la operación se reasigna después.'); rerenderAll(); return; }
+    S.client = C.generic(); S.ctx={cargo:null,abono:null,linea:null,ordenante:null}; S.tiles.forEach(t=>t.tipo='OTROS'); C.log('core','cliente por asignar activado', {}); toast('Cliente por asignar: solo spot, sin margen de cliente; la operación se reasigna después.'); rerenderAll(); broadcastCtx(); return; }
   const c = C.findClient(val) || C.findClient(val.split(' · ').pop());
   if(!c){ toast('Cliente no encontrado en el core.','err'); return; }
   S.client = c; const d = C.getDatosEmpresa(c);
   S.ctx = { cargo: c.cuentas.find(x=>x.div==='EUR')||c.cuentas[0]||null, abono: c.cuentas.find(x=>x.div!=='EUR')||c.cuentas[0]||null, linea: c.lineas[0]||null, ordenante: c.ordenantes.find(o=>o.apoderado)||c.ordenantes[0]||null };
   if(c.mifid==='ko') toast('Atención: cliente no apto MiFID. Las vistas de contratación quedan limitadas.','err');
-  rerenderAll();
+  rerenderAll(); broadcastCtx();
 }
 function rerenderAll(){ renderTopbar(); renderCtxBar(); renderCenter(); renderPanels(); renderActivity(); }
+// ---- estado compartido entre ventanas ----
+export function ctxSnapshot(){ return { cli: S.client?.id||null, generic: !!S.client?.generic, ctx: { cargo:S.ctx.cargo?.n||null, abono:S.ctx.abono?.n||null, linea:S.ctx.linea?.n||null, ordenante:S.ctx.ordenante?.nif||null }, mode:S.mode, ws:S.activeWs, pairs:S.tiles.map(t=>t.pair) }; }
+function broadcastCtx(){ SYNC.send('ctx', ctxSnapshot()); }
+export function applyCtx(p){
+  if(!p) return;
+  if(p.generic){ S.client = C.generic(); S.ctx={cargo:null,abono:null,linea:null,ordenante:null}; }
+  else if(p.cli){ const c = C.clients().find(x=>x.id===p.cli); if(c){ S.client=c; S.ctx = { cargo:c.cuentas.find(x=>x.n===p.ctx?.cargo)||c.cuentas[0]||null, abono:c.cuentas.find(x=>x.n===p.ctx?.abono)||c.cuentas[1]||c.cuentas[0]||null, linea:c.lineas.find(x=>x.n===p.ctx?.linea)||c.lineas[0]||null, ordenante:c.ordenantes.find(x=>x.nif===p.ctx?.ordenante)||c.ordenantes[0]||null }; } }
+  else { S.client=null; S.ctx={cargo:null,abono:null,linea:null,ordenante:null}; }
+  if(p.mode) S.mode=p.mode;
+  if(p.pairs && panelMode==='precios'){ S.tiles = p.pairs.map(pr=>({ pair:pr, tipo:'OTROS', obs:'', divOp:pr.split('/')[1], amount:0, tenor:'SPOT', valueDate:null })); }
+}
+let panelMode = null;   // null = mesa completa; 'actividad' | 'posicion' | 'ordenes' | 'plataforma' | 'ultimas' | 'precios'
+// Ventana hija: solo un panel, sincronizada con la mesa
+export function mountPanel(el, user, panel){
+  root = el; S.user = user; perms = user.perms; panelMode = panel;
+  S.act ??= { filter:'todas', scope:'cliente', table:false, collapsed:false }; S.ctxbar ??= { collapsed:true };
+  resetTilesFromWorkspace();
+  const titles = { actividad:gt('actividad'), posicion:gt('posicionViva'), ordenes:gt('ordenesVivas'), plataforma:gt('estadoPlataforma'), ultimas:gt('ultimas'), precios:'Precios' };
+  root.innerHTML = `<div class="pwin">
+    <div class="pw-head"><div class="brand"><div class="mark">T</div><b>${BRAND.name}</b></div><span class="pw-title">${esc(titles[panel]||panel)}</span><span class="pw-cli mono" data-pwcli></span><span class="grow"></span><span class="sysclock mono" data-clock></span><span class="envchip ${envLabel().toLowerCase()}">${envLabel()}</span><span class="syncdot" data-sync title="Sincronizado con la mesa"></span></div>
+    <div class="pw-body" data-pwbody></div></div>`;
+  clearInterval(clockTimer); clockTimer = sysClock(q('[data-clock]'));
+  const body = q('[data-pwbody]');
+  const paint = ()=>{
+    const cl = q('[data-pwcli]'); if(cl) cl.textContent = S.client ? S.client.nombre : 'sin cliente';
+    if(panel==='actividad'){ if(!$('[data-activity]',body)){ body.innerHTML='<aside class="activity" data-activity></aside>'; } S.act.collapsed=false; renderActivity(); $('[data-fold]',body)?.remove(); $('[data-pop]',body)?.remove(); }
+    else if(panel==='precios'){ if(!$('[data-row1]',body)){ body.innerHTML='<div class="center one"><div class="row1" data-row1></div></div>'; } renderCenter(); $('[data-pop-precios]',body)?.remove(); }
+    else { if(!$('[data-panel]',body)){ body.innerHTML=''; const card=panelCard(panel); $('[data-pop]',card)?.remove(); body.appendChild(card); } paintPanel(panel, $('[data-pbody]',body)); }
+  };
+  paint();
+  unsubs.forEach(f=>f()); unsubs = [ C.onOps(paint), SYNC.on('ctx', p=>{ applyCtx(p); paint(); }) ];
+  if(panel==='precios') unsubs.push(PX.subscribe(onTick));
+  clearInterval(staleTimer); staleTimer = setInterval(()=>{ paintStale(); if(panel==='plataforma') paint(); }, 1000);
+  SYNC.send('hello', {panel});      // pide operaciones y contexto a la mesa
+  SYNC.send('hello-ctx', {panel});
+}
+
 
 // ---------------- centro: streaming ----------------
 function renderCenter(){
@@ -298,6 +339,7 @@ function paintPlatform(){ const b = $('[data-panel="plataforma"] [data-pbody]', 
 
 // ---------------- multiventana (bloque 6): por ahora abre la ruta del panel ----------------
 export function popout(panel){
+  if(panelMode){ toast('Ya estás en una ventana de panel: abre las demás desde la mesa.'); return; }
   const url = `./?panel=${encodeURIComponent(panel)}&ch=${encodeURIComponent(S.user.canal)}${S.client?'&cli='+encodeURIComponent(S.client.id):''}`;
   const w = window.open(url, 'trato-'+panel, 'popup=yes,width=520,height=720');
   if(!w){ modal({ title:'Ventana bloqueada por el navegador', width:460, body:`<div class="notice">El navegador ha bloqueado la ventana emergente. Permita ventanas para este sitio o ábrala a mano:</div><p style="margin-top:10px"><a class="btn btn-primary btn-sm" href="${url}" target="_blank" rel="opener">Abrir «${esc(panel)}» en una pestaña nueva</a></p>`, actions:[{label:'Cerrar',onClick:a=>a.close()}] }); return; }
@@ -323,7 +365,7 @@ function openPalette(){
       {l:'Consola de integración', d:'lo que viaja al core', run:()=>cbsRef?.onToggleConsole()},
       {l:'Tema claro', d:'', run:()=>cbsRef?.onTheme('light')}, {l:'Tema navy', d:'', run:()=>cbsRef?.onTheme('sala')},
       {l:'Actividad en ventana', d:'abrir el panel de actividad aparte', run:()=>popout('actividad')},
-      {l:'Posición en ventana', d:'', run:()=>popout('posicion')},
+      {l:'Posición en ventana', d:'', run:()=>popout('posicion')}, {l:'Precios en ventana', d:'tiles de streaming aparte', run:()=>popout('precios')}, {l:'Consola en ventana', d:'', run:()=>popout('consola')},
       {l:'Salir', d:'cerrar sesión', run:()=>cbsRef?.onLogout()},
     ];
     for(const a of acts){ if(!s || a.l.toLowerCase().includes(s) || a.d.toLowerCase().includes(s)) items.push({k:'Acción', ...a}); }
@@ -351,7 +393,7 @@ function renderRPanel({onLogout,onToggleConsole,onTheme}){
       <div class="row"><span>Tema</span><span class="seg"><button data-theme="light" class="${S.theme==='light'?'on':''}">Claro</button><button data-theme="sala" class="${S.theme==='sala'?'on':''}">Navy</button></span></div>
       <div class="row"><span>Idioma</span><span class="seg"><button class="on">ES</button><button disabled title="Pendiente">EN</button></span></div>
       <div class="sect">Integración (demo)</div>
-      <button class="item" data-go="CONSOLE">Consola de integración</button>
+      <button class="item" data-go="CONSOLE">Consola de integración</button><button class="item" data-go="CONSOLEWIN">Consola en ventana propia ⧉</button>
       <div class="row"><span>${gt('cobertura')}<br><small class="muted">OFF = el proveedor cubre en mercado</small></span><button class="switch ${C.cfg.switchOn?'on':''}" data-switch><i></i>${C.cfg.switchOn?'ON':'OFF'}</button></div>
       <div class="row"><span>Observaciones obligatorias<br><small class="muted">en spot con liquidación externa</small></span><button class="switch ${C.cfg.obsObligatorias?'on':''}" data-obsreq><i></i>${C.cfg.obsObligatorias?'ON':'OFF'}</button></div>
       <div class="row"><span>Rechazos aleatorios<br><small class="muted">last look 3 % · asiento 2 %</small></span><button class="switch ${C.cfg.rechazosAleatorios?'on':''}" data-rechazos><i></i>${C.cfg.rechazosAleatorios?'ON':'OFF'}</button></div>
@@ -362,7 +404,7 @@ function renderRPanel({onLogout,onToggleConsole,onTheme}){
   $$('[data-go]',p).forEach(b=>b.onclick=()=>{ const g=b.dataset.go; p.classList.remove('open');
     if(g==='SPOTFWD'||g==='FLEX'){ S.mode=g; renderTopbar(); renderCenter(); } else if(g==='RFS') openOrderBoleta({perms,onDone:renderActivity}); else if(g==='WS') openWorkspaces();
     else if(g==='ACT'){ S.act.collapsed=!S.act.collapsed; renderActivity(); } else if(g==='CTX'){ S.ctxbar.collapsed=!S.ctxbar.collapsed; renderCtxBar(); } else if(g==='K') openPalette();
-    else if(g==='CONSOLE') onToggleConsole(); else if(g==='LOGOUT') onLogout(); });
+    else if(g==='CONSOLE') onToggleConsole(); else if(g==='CONSOLEWIN') popout('consola'); else if(g==='LOGOUT') onLogout(); });
   $$('[data-theme]',p).forEach(b=>b.onclick=()=>{ onTheme(b.dataset.theme); renderRPanel({onLogout,onToggleConsole,onTheme}); });
   $('[data-rechazos]',p).onclick=()=>{ C.cfg.rechazosAleatorios=!C.cfg.rechazosAleatorios; C.log('core',`Rechazos aleatorios ${C.cfg.rechazosAleatorios?'ON':'OFF'}`,{}); renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); };
   $('[data-obsreq]',p).onclick=()=>{ C.cfg.obsObligatorias=!C.cfg.obsObligatorias; C.log('core',`Observaciones obligatorias ${C.cfg.obsObligatorias?'ON':'OFF'}`,{}); renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); renderCenter(); toast(C.cfg.obsObligatorias?'Observaciones obligatorias en claves de arbitraje.':'Observaciones opcionales (modo demo).'); };

@@ -2,8 +2,10 @@
 // mensajes DO1 y consola de integración. Sin nada real detrás — todo vive en memoria.
 import { CLIENTS, GENERIC, SEED_OPS, RATES } from './data.js';
 import * as PX from './prices.js';
+import * as SYNC from './sync.js';
 
 let idSeq = 500000120; let refSeq = 100400;
+if(SYNC.isPanelWindow()){ const k = parseInt(SYNC.winId,36)%9+1; idSeq += k*1000; refSeq += k*100; }   // ventanas hijas: rango propio
 export const nextGlobalId = () => String(idSeq++);
 export const nextRef = (o) => `${o?.tipoOrden==='FORWARD' ? 'SC' : 'CV'}-${refSeq++}`;
 
@@ -12,6 +14,7 @@ const consoleSubs = new Set(); export const events = [];
 export function log(kind, title, payload){
   const ev = { t: new Date(), kind, title, payload }; events.unshift(ev); if(events.length>300) events.pop();
   for(const f of consoleSubs) f(ev);
+  if(!ev._remote) SYNC.send('log', { t: ev.t.toISOString(), kind, title, payload });   // la consola en ventana propia lo recibe
 }
 export const onLog = f => { consoleSubs.add(f); return ()=>consoleSubs.delete(f); };
 
@@ -130,7 +133,21 @@ export function applyLinea(o, {silent=false}={}){
 export const ops = SEED_OPS.map(o => ({...o, idGlobal: nextGlobalId(), hora:'—', markupOk:true}));
 ops.forEach(o => { if(o.estado==='Ejecutada') applyLinea(o, {silent:true}); });   // el disponible de las líneas ya refleja lo vivo
 const opSubs = new Set(); export const onOps = f => { opSubs.add(f); return ()=>opSubs.delete(f); };
-export function notifyOps(){ for(const f of opSubs) f(); }
+let applying = false;
+export function notifyOps(){ for(const f of opSubs) f(); if(!applying) SYNC.send('ops', snapshot()); }
+export function snapshot(){ const lineas={}; for(const c of CLIENTS) for(const l of c.lineas) lineas[l.n]=l.disp; return { ops, lineas, cfg }; }
+export function applySnapshot(snap){
+  if(!snap) return; applying = true;
+  try{
+    if(snap.ops){ const byId = new Map(ops.map(o=>[o.idGlobal,o])); const merged = snap.ops.map(n=>{ const cur = byId.get(n.idGlobal); return cur ? Object.assign(cur, n) : n; }); ops.length=0; ops.push(...merged); }
+    if(snap.lineas){ for(const c of CLIENTS) for(const l of c.lineas) if(snap.lineas[l.n]!==undefined) l.disp = snap.lineas[l.n]; }
+    if(snap.cfg) Object.assign(cfg, snap.cfg);
+    for(const f of opSubs) f();
+  } finally { applying = false; }
+}
+SYNC.on('ops', applySnapshot);
+SYNC.on('hello', ()=>SYNC.send('ops', snapshot()));   // una ventana nueva pide el estado; la que lo tenga responde
+
 export function addOp(o){ ops.unshift(o); notifyOps(); return o; }
 export function updateOp(o, patch){ Object.assign(o, patch); notifyOps(); }
 

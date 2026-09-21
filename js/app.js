@@ -5,7 +5,8 @@ import * as C from './core.js';
 import * as PX from './prices.js';
 import { S } from './state.js';
 import { BRAND, USERS } from './data.js';
-import { mountDesk } from './ui-desk.js';
+import { mountDesk, mountPanel } from './ui-desk.js';
+import * as SYNC from './sync.js';
 import { mountBroker } from './ui-broker.js';
 
 const root = $('#root');
@@ -13,7 +14,7 @@ S.theme = localStorage.getItem('trato.theme') || 'sala';   // v0.3: la mesa arra
 applyTheme(S.theme);
 PX.start();
 
-function applyTheme(t){ S.theme=t; localStorage.setItem('trato.theme',t); document.documentElement.dataset.theme = t==='sala'?'sala':''; }
+function applyTheme(t){ S.theme=t; localStorage.setItem('trato.theme',t); document.documentElement.dataset.theme = t==='sala'?'sala':''; SYNC.send('theme', t); }
 
 function login(){
   document.documentElement.dataset.theme='';
@@ -46,4 +47,21 @@ function paintConsole(){
   const b=$('[data-cbody]'); if(!b) return;
   b.innerHTML = C.events.slice(0,120).map(e=>`<div class="ev"><span class="t">${e.t.toLocaleTimeString('es-ES')}</span> <span class="k ${e.kind}">${e.kind.toUpperCase()}</span> ${esc(e.title)}${e.payload&&Object.keys(e.payload).length?`<pre>${esc(JSON.stringify(e.payload,null,1).slice(0,600))}</pre>`:''}</div>`).join('') || '<div class="ev" style="opacity:.6">Sin eventos todavía. Conecte un cliente o solicite un precio.</div>';
 }
-login();
+const PARAMS = new URLSearchParams(location.search);
+if(PARAMS.get('panel')) panelWindow(PARAMS); else login();
+
+// Ventana hija: un solo panel sincronizado con la mesa (BroadcastChannel). Se abre con ⧉ desde la mesa.
+function panelWindow(P){
+  const panel = P.get('panel'); const ch = USERS[P.get('ch')] ? P.get('ch') : 'SALA'; const user = USERS[ch];
+  document.title = `${BRAND.name} · ${panel}`;
+  document.documentElement.classList.add('is-panel');
+  root.innerHTML = `<div id="app"></div>`;
+  if(panel==='consola'){
+    root.innerHTML = `<div class="pwin"><div class="pw-head"><div class="brand"><div class="mark">T</div><b>${BRAND.name}</b></div><span class="pw-title">Consola de integración</span><span class="grow"></span><span class="envchip ${envLabel().toLowerCase()}">${envLabel()}</span></div><div class="pw-body console open static" data-console><div class="c-body" data-cbody></div></div></div>`;
+    C.onLog(()=>paintConsole()); paintConsole();
+    SYNC.on('log', e=>{ C.events.unshift({...e, t:new Date(e.t), _remote:true}); if(C.events.length>300) C.events.pop(); paintConsole(); });
+    return;
+  }
+  mountPanel($('#app'), user, panel);
+}
+SYNC.on('theme', t=>{ S.theme=t; document.documentElement.dataset.theme = t==='sala'?'sala':''; });
