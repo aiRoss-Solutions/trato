@@ -1,4 +1,25 @@
-# Especificación funcional — Trato v0.2
+# Especificación funcional — Trato v0.3
+
+## 0. Layout de la mesa en v0.3 (rama `v0.3-layout`)
+- **Cabecera** (solo lo global): marca · workspace · modo *Spot · Fwd* / *Flexible* · **Órdenes** (boleta) · **⌘K** · reloj y
+  entorno · usuario · ☰.
+- **Fila 1**: tiles de precio compactos (5 por fila a 1440), cabecera con «+ par» y ⧉. El ticket sigue abriéndose **dentro
+  del tile** (ocupa dos columnas).
+- **Fila 2**: *Posición viva* · *Órdenes y alertas vivas* (con cancelar) · *Estado de la plataforma* (proveedor, core,
+  cobertura, último tick, entorno) · *Últimas operaciones*. Cada panel con ⧉ para abrirlo en ventana propia.
+- **Actividad** (columna derecha, 360 px, plegable): tarjetas de operación en tiempo real; filtros **Cliente / Mías / Mesa** y
+  **Todas / Vivas / Fwd / Órdenes / Alertas**; **☷ ver como tabla** (el blotter clásico con filtros, columnas y CSV); ⋯ acciones;
+  clic → detalle.
+- **Barra inferior de cliente y contexto**: cliente (nombre o NIF), cuenta de cargo, cuenta de abono, línea de riesgo FX,
+  ordenante; debajo ID cliente, gestor, MiFID, titular MiFID, LEI, margen, saldo, disponible de línea, contacto. Plegable.
+- **⌘K / Ctrl+K**: cliente, NIF, par (añade o enfoca el tile), acciones (órdenes, workspaces, modo, consola, tema, ventanas, salir).
+- **Multiventana**: ⧉ en cada panel → ventana propia sincronizada (operaciones, líneas, cliente, contexto, modo, tema). Las
+  ventanas hijas pueden ejecutar. La disposición se recuerda por usuario y se ofrece restaurar al entrar. Si el navegador
+  bloquea la ventana, se ofrece abrirla en pestaña.
+- **Tema**: navy por defecto en mesa y banca telefónica, claro en empresas; conmutable.
+- **Glosario** (`js/glossary.js`): los códigos internos no cambian; las etiquetas son propias de Trato (ver CHANGELOG v0.3).
+- El canal **empresas** conserva en v0.3.0 el layout de v0.2 con el glosario nuevo y tema claro.
+
 
 Lo que el prototipo **simula** hoy, con las reglas que aplica. Todo corre en memoria del navegador; al recargar se pierde lo
 operado (las operaciones semilla vuelven). Los textos entre comillas son los literales que ve el usuario.

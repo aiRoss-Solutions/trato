@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.3.0 — 2026-09-21 · de "clon" a plataforma propia (rama `v0.3-layout`, publicada en `/v3/` para comparar con UAT v0.2)
+Decisión de Maxi (21-sep): Trato debe parecer el destilado de varios proyectos de distribución, no un clon. Benchmark en
+`docs/BENCHMARK-v0.3.md`; prompt en `docs/PROMPT-v0.3.md`; incógnitas y defaults en `docs/UNKNOWNS.md`.
+- **Bloque 1 · glosario** (`js/glossary.js`): códigos internos estables, etiquetas propias. Fuera los términos del sistema de
+  referencia: clave de arbitraje → *Spot*, conversión → *Cambio entre cuentas*, línea 89 → *Línea de riesgo FX* (`LR …`),
+  firma ágil → *Sesión operativa*, cliente genérico → *Cliente por asignar*, call order / aviso → *Alerta con llamada* /
+  *Alerta de precio*, DO1/DO2 → alta / evento de ciclo de vida, switch → *Cobertura en libros*, tutor → *Gestor*, markup
+  completado → *Margen confirmado*, bróker → *Empresas*, canales MESA / TEL / WEB. Borrador EN "a validar por negocio".
+- **Bloques 2-5 · layout de mesa propio**: cabecera fina solo con lo global (marca, workspace, modo, órdenes, ⌘K, reloj +
+  entorno, usuario, menú) · **dos filas visibles** a 1440×900: tiles compactos 5 por fila + paneles *Posición viva*, *Órdenes
+  y alertas vivas*, *Estado de la plataforma*, *Últimas operaciones* · **Actividad** a la derecha (360 px, plegable): tarjetas
+  por operación en tiempo real, filtros cliente / mías / mesa y todas / vivas / fwd / órdenes / alertas, "ver como tabla",
+  ⋯ acciones y clic → detalle · **barra inferior de cliente y contexto** (cliente, cuentas, línea, ordenante + ID, gestor,
+  MiFID, LEI, margen, saldo, disponible, contacto), plegable · **paleta ⌘K** (cliente, NIF, par, acciones) · **tema navy por
+  defecto en mesa** (claro en empresas), cian de mercado para streaming y chips FWD/FLEX.
+- **Bloque 6 · multiventana**: `js/sync.js` (BroadcastChannel, fallback `storage`); `?panel=actividad|posicion|ordenes|
+  plataforma|ultimas|precios|consola` abre un panel en ventana propia con cabecera, reloj y entorno; se sincronizan
+  operaciones, líneas, configuración, cliente y contexto, modo y tema; una hija puede ejecutar (rango propio de idGlobal y
+  referencias); la consola en ventana recibe los eventos de la mesa; aviso con enlace si el navegador bloquea la ventana.
+- **Bloque 7 · disposición recordada**: se guarda por usuario qué paneles están en ventana; al entrar se ofrece *Restaurar
+  disposición*; sección *Ventanas* en el menú.
+- Sin cambios en `core.js` salvo sincronización: toda la lógica de negocio de v0.2.1 se mantiene.
+- Pendiente de v0.3 (anotado en UNKNOWNS): capturas en `docs/capturas/v0.3/`, prueba en Safari/Firefox, lock del RFS por tile
+  entre ventanas (hoy dos ventanas pueden pedir precio del mismo par), semáforo de divisa y panel de situación del canal
+  empresas (queda para v0.3.1: el canal empresas conserva el layout v0.2 con tema claro).
+
 ## v0.2.1 — 2026-09-21 · observaciones de Lucio (solo lo actual)
 - Reloj del sistema `dd/mm/aaaa · hh:mm:ss` y chip de entorno **LOCAL / UAT / PRO** en cabecera de sala y bróker y en el pie del login (L-obs-2).
 - El ticket muestra **FORWARD · SEGURO DE CAMBIO** para que se vea el tipo de orden además del nombre de producto (L-bug-1).

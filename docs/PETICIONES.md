@@ -64,7 +64,7 @@ _(vacío)_
 | R-02 | Market data real (Yahoo Finance u otra fuente pública) con refresco periódico y fallback al random walk | Lucio tip 2 | CORS: proxy mínimo o fichero JSON regenerado por GitHub Action cada N minutos |
 | R-03 | Multi-idioma por usuario (ES/EN) con glosario de negocio validado | Lucio tip 3 · B-02 | "seguro de cambio" → *FX forward*; "clave de arbitraje" → *FX spot (non-account)* a validar |
 | R-04 | Capa "nuevo" aiRoss: P-012 tope mark-up, P-013 trazabilidad de cotizaciones no cerradas, P-014 multibanco, P-015 explicación del precio | Camilo | aparcadas por decisión de Maxi (20-sep) |
-| R-05 | Rediseño v0.3: layout propio (no clon), navegación vertical de operaciones, barra de cliente abajo, ≥ 2 filas de paneles, multiventana para varias pantallas | Maxi 21-sep | ver `docs/PROMPT-v0.3.md` |
+| R-05 | Rediseño v0.3: layout propio (no clon), navegación vertical de operaciones, barra de cliente abajo, ≥ 2 filas de paneles, multiventana para varias pantallas | Maxi 21-sep | ✅ v0.3.0 en rama `v0.3-layout` → `/v3/` (ver CHANGELOG) |
 
 ## Backlog propuesto v0.1 (ordenado)
 | # | Qué | Dónde | Por qué | Estado |

@@ -9,7 +9,19 @@ python3 -m http.server 8765 --bind 127.0.0.1
 ```
 y abrir <http://localhost:8765>. (Cualquier servidor estático sirve; `file://` no, porque usa módulos ES.)
 
-## Recorrido de demo (5 minutos)
+## Recorrido de demo v0.3 (mesa, 5 minutos) — <https://aiross-solutions.github.io/trato/v3/>
+1. **Entrar → MESA.** Pantalla navy: precios arriba (dos filas), *Actividad* a la derecha, cliente y contexto abajo.
+2. **⌘K** → escribir `nortech` → Enter. La barra inferior se llena (cuentas, línea de riesgo FX, MiFID, LEI, margen) y la
+   *Actividad* muestra sus operaciones; la fila 2 pinta *Posición viva* y *Últimas operaciones*.
+3. En **EUR/USD**: motivo en *Obs.*, importe `50K`, **VENDER USD** → ticket dentro del tile → *Aceptar* → la tarjeta aparece
+   arriba de *Actividad* y en *Últimas operaciones*; la consola (☰) muestra el alta al core.
+4. Tenor `3M` → el mismo flujo es un **forward** (chip FWD): consume *Disponible línea FX* en la barra inferior.
+5. **⧉ en Actividad** → se abre en ventana propia y se sincroniza sola; mover esa ventana a la otra pantalla. ☰ → *Ventanas*
+   para precios y posición. Al volver a entrar: «Restaurar disposición».
+6. **Actividad → ☷** para ver la tabla clásica con filtros, columnas y CSV; ⋯ sobre un forward → *Anticipar* / *Cancelar*.
+7. **Órdenes** (cabecera) → orden limitada con límite mejor que el mercado → aparece en *Órdenes y alertas vivas*.
+
+## Recorrido de demo v0.2 (layout heredado, 5 minutos) — <https://aiross-solutions.github.io/trato/uat/>
 1. **Login → SALA.** Escribir `Nortech Componentes SL` en *Cliente* (o el NIF `B87654321`). Se cargan cuentas, línea 89,
    ordenante y la cabecera pre-trade (MiFID, LEI, margen personalizado…).
 2. En el tile **EUR/USD** poner un motivo en *Obs.*, importe `50K` y pulsar **COMPRAR USD** → el ticket se abre *dentro del

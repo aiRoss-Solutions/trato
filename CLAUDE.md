@@ -63,6 +63,16 @@ docs/CHANGELOG.md     qué cambió en cada versión
   (sin install, sin build command, output = `.`). `robots.txt` ya deja el entorno como no indexable.
 - Si el deploy no sale o hace falta permiso/config, **avisar a Javi, no tocar**.
 
+## Estado 21-sep-2026 · v0.3 en rama `v0.3-layout` (publicada en `/v3/`)
+- **Cambio de enfoque**: Trato ya no es un clon; es "el destilado de varios proyectos de distribución" con imagen aiRoss.
+  Layout propio (ver `docs/FUNCIONAL.md` §0), glosario propio (`js/glossary.js`), multiventana (`js/sync.js`), navy por
+  defecto en mesa. Benchmark en `docs/BENCHMARK-v0.3.md`, prompt en `docs/PROMPT-v0.3.md`, incógnitas en `docs/UNKNOWNS.md`,
+  discurso en `docs/DISCURSO.md`.
+- **Tres entornos publicados**: PRO `/trato/` (main), UAT `/trato/uat/` (develop = v0.2.1, la versión anterior, guardada
+  también como tag `v0.2.1`), **V3 `/trato/v3/`** (rama `v0.3-layout`). Cuando Maxi apruebe v0.3 se mergea a `develop`.
+- Regla del glosario: **nunca** volver a escribir en la UI "clave de arbitraje", "línea 89", "firma ágil", "cliente
+  genérico", "call order", "DO1/DO2", "switch", "tutor", "bróker". Los códigos internos (`tipoOp`, estados) sí se mantienen.
+
 ## Estado 20-sep-2026 · decisión vigente
 - Camilo revisó v0.1 (44 defectos, 18 peticiones; material en la carpeta Dropbox compartida). En v0.2 se implementó **todo lo
   correctivo/heredado** (P-001…P-011, P-017, P-018, parte de P-016).
@@ -91,7 +101,8 @@ docs/CHANGELOG.md     qué cambió en cada versión
 
 ## Entornos publicados (GitHub Pages)
 - **PRO** ← rama `main` → <https://aiross-solutions.github.io/trato/>
-- **UAT** ← rama `develop` → <https://aiross-solutions.github.io/trato/uat/> (lleva chapa naranja "UAT" abajo a la derecha)
+- **UAT** ← rama `develop` → <https://aiross-solutions.github.io/trato/uat/> (chapa naranja "UAT · v0.2")
+- **V3** ← rama `v0.3-layout` → <https://aiross-solutions.github.io/trato/v3/> (chapa azul "V3 · rediseño")
 - Los publica `.github/workflows/pages.yml` en cada push a `main` o `develop`. No hay build: se copian los ficheros tal cual.
 - El repo es **público** para poder usar Pages con el plan free de la org; por eso aquí no entra **ningún** dato, nombre ni
   documento real de cliente. Todo eso vive en Dropbox, no en el repo.
