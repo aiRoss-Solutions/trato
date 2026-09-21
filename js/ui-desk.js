@@ -278,7 +278,7 @@ function opCard(o){
   const d = PX.dec(o.par); const kind = ORDENES.has(o.tipoOp)?'ol':'ejecutadas';
   const el = h(`<div class="opcard ${VIVAS.has(o.estado)?'viva':''}" tabindex="0" title="Clic: detalle · ⋯: acciones">
     <div class="l1"><span class="pchip ${gchip(o.tipoOp).toLowerCase()}">${esc(gchip(o.tipoOp))}</span><b class="mono">${esc(o.ref||o.idGlobal)}</b><span class="par mono">${esc(o.par)}</span><span class="grow"></span>${stateChip(o.estado,C.STATES)}<button class="icon-btn xs" data-more title="Acciones">⋯</button></div>
-    <div class="l2"><span class="${o.dir==='COMPRAR'?'buy':'sell'}">${esc(o.dir)} ${esc(o.divOp)}</span> <b class="mono">${fmtN(o.nominal,0)}</b><span class="muted"> @ </span><b class="mono">${o.precioCliente!=null?fmtN(o.precioCliente,d):(o.precioLimite!=null?fmtN(o.precioLimite,d)+' lím.':'—')}</b><span class="grow"></span><span class="muted small">${esc(gl(o.tipoOp))} · ${PX.es(o.fechaValor)}${o.hora&&o.hora!=='—'?' · '+esc(o.hora):''}</span></div>
+    <div class="l2"><span class="${o.dir==='COMPRAR'?'buy':'sell'}">${esc(o.dir)} ${esc(o.divOp)}</span> <b class="mono">${fmtN(o.nominal,0)}</b><span class="muted"> @ </span><b class="mono">${o.precioCliente!=null?fmtN(o.precioCliente,d):(o.precioLimite!=null?fmtN(o.precioLimite,d)+' lím.':'—')}</b><span class="grow"></span><span class="muted small">${o.proveedor?'LP·'+esc(o.proveedor)+' · ':''}${esc(gl(o.tipoOp))} · ${PX.es(o.fechaValor)}${o.hora&&o.hora!=='—'?' · '+esc(o.hora):''}</span></div>
     ${S.act.scope!=='cliente'?`<div class="l3 muted small">${esc(o.clienteNombre||C.clients().find(x=>x.id===o.cliente)?.nombre||o.cliente)}</div>`:''}
   </div>`);
   el.onclick = e=>{ if(e.target.closest('[data-more]')) return; onAction('masInfo', o); };
@@ -286,6 +286,15 @@ function opCard(o){
   el.oncontextmenu = e=>{ e.preventDefault(); rowMenu(e, o, kind, perms, onAction); };
   $('[data-more]',el).onclick = e=>{ e.stopPropagation(); rowMenu(e, o, kind, perms, onAction); };
   return el;
+}
+const QOUT = { abierta:'wip', ejecutada:'ok', rechazada:'ko', expirada:'warn', cerrada:'mkt' };
+function quoteCard(q){
+  const d = PX.dec(q.par); const t = new Date(q.t);
+  return h(`<div class="opcard quote ${q.outcome==='abierta'?'viva':''}" tabindex="0">
+    <div class="l1"><span class="pchip ${gchip(q.tipoOp).toLowerCase()}">${esc(gchip(q.tipoOp))}</span><b class="mono">${esc(q.id)}</b><span class="par mono">${esc(q.par)}</span><span class="grow"></span><span class="st ${QOUT[q.outcome]||'mkt'}">${esc(q.outcome)}</span></div>
+    <div class="l2"><span class="${q.dir==='COMPRAR'?'buy':'sell'}">${esc(q.dir)} ${esc(q.divOp)}</span> <b class="mono">${fmtN(q.nominal,0)}</b><span class="muted"> @ </span><b class="mono">${q.precioCliente!=null?fmtN(q.precioCliente,d):'—'}</b><span class="grow"></span><span class="muted small">${q.proveedor?'LP·'+esc(q.proveedor)+' · ':''}${q.spotPips!=null?fmtN(q.spotPips,1)+' pips · ':''}${t.toLocaleTimeString('es-ES')}${q.segundos!=null?' · '+q.segundos+' s':''}</span></div>
+    ${S.act.scope!=='cliente'?`<div class="l3 muted small">${esc(q.clienteNombre||q.cliente)}${q.ref?' · '+esc(q.ref):''}${q.motivo?' · '+esc(q.motivo):''}</div>`:(q.motivo||q.ref?`<div class="l3 muted small">${q.ref?esc(q.ref):''}${q.ref&&q.motivo?' · ':''}${q.motivo?esc(q.motivo):''}</div>`:'')}
+  </div>`);
 }
 function renderActivity(){
   const a = S.act, box = q('[data-activity]'); if(!box) return;
@@ -303,16 +312,23 @@ function renderActivity(){
       <button class="icon-btn xs" data-fold title="Plegar">›</button></div>
     <div class="a-filters">
       <span class="seg sm"><button data-scope="cliente" class="${a.scope==='cliente'?'on':''}">Cliente</button><button data-scope="mios" class="${a.scope==='mios'?'on':''}">Mías</button><button data-scope="todas" class="${a.scope==='todas'?'on':''}">Mesa</button></span>
-      <span class="seg sm"><button data-f="todas" class="${a.filter==='todas'?'on':''}">Todas</button><button data-f="vivas" class="${a.filter==='vivas'?'on':''}">Vivas</button><button data-f="forwards" class="${a.filter==='forwards'?'on':''}">Fwd</button><button data-f="ordenes" class="${a.filter==='ordenes'?'on':''}">Órdenes</button><button data-f="alertas" class="${a.filter==='alertas'?'on':''}">Alertas</button></span>
+      <span class="seg sm"><button data-f="todas" class="${a.filter==='todas'?'on':''}">Todas</button><button data-f="vivas" class="${a.filter==='vivas'?'on':''}">Vivas</button><button data-f="forwards" class="${a.filter==='forwards'?'on':''}">Fwd</button><button data-f="ordenes" class="${a.filter==='ordenes'?'on':''}">Órdenes</button><button data-f="alertas" class="${a.filter==='alertas'?'on':''}">Alertas</button>${C.cfg.capaNuevo?`<button data-f="cotizaciones" class="${a.filter==='cotizaciones'?'on':''}" title="Cotizaciones mostradas al cliente, cerradas o no (NUEVO)">Cotiz.</button>`:''}</span>
     </div>
     <div class="a-body" data-abody></div>
-    <div class="asst" data-asst><div class="asst-h"><b>Asistente de mesa</b><span class="pchip nuevo">NUEVO</span><span class="grow"></span><span class="muted small" title="Demo local con reglas sobre los datos de la pantalla. En producción: LLM corporativo del banco.">demo</span></div>
+    ${C.cfg.capaNuevo?`<div class="asst" data-asst><div class="asst-h"><b>Asistente de mesa</b><span class="pchip nuevo">NUEVO</span><span class="grow"></span><span class="muted small" title="Demo local con reglas sobre los datos de la pantalla. En producción: LLM corporativo del banco.">demo</span></div>
       <div class="asst-out" data-aout>${S.asstLast?esc(S.asstLast):'Preguntá por posición, operaciones, precios («EUR/USD 3M»), línea o un término.'}</div>
-      <form class="asst-in" data-aform><input data-ain placeholder="Preguntar al asistente…" autocomplete="off"><button class="btn btn-primary btn-sm" type="submit">↵</button></form></div>`;
+      <form class="asst-in" data-aform><input data-ain placeholder="Preguntar al asistente…" autocomplete="off"><button class="btn btn-primary btn-sm" type="submit">↵</button></form></div>`:''}`;
   const body = $('[data-abody]',box);
   $$('[data-lp]',box).forEach(b=>b.onclick=()=>{ PX.setProvider(b.dataset.lp); C.log('fix',`proveedor de liquidez: ${PX.providerName()}`,{}); toast(`Precios desde: ${PX.providerName()}`); renderActivity(); onTick(); });
-  $('[data-aform]',box).onsubmit = e=>{ e.preventDefault(); const qn=$('[data-ain]',box).value.trim(); if(!qn) return; const a = askAssistant(qn); S.asstLast = a; $('[data-aout]',box).textContent = a; $('[data-ain]',box).value=''; C.log('core','asistente de mesa (demo)',{pregunta:qn}); };
-  if(a.table){ body.classList.add('astable'); renderDock(body, {perms, onAction}); }
+  if($('[data-aform]',box)) $('[data-aform]',box).onsubmit = e=>{ e.preventDefault(); const qn=$('[data-ain]',box).value.trim(); if(!qn) return; const a = askAssistant(qn); S.asstLast = a; $('[data-aout]',box).textContent = a; $('[data-ain]',box).value=''; C.log('core','asistente de mesa (demo)',{pregunta:qn}); };
+  if(a.filter==='cotizaciones'){
+    const qs = C.quotes.filter(q => a.scope==='todas' || (a.scope==='mios' ? q.usuario===S.user.user : (S.client && q.cliente===S.client.id)));
+    const st = C.quoteStats(a.scope==='cliente' ? S.client?.id : null);
+    box.querySelector('.count').textContent = qs.length;
+    body.innerHTML = `<div class="qstats"><span class="pchip nuevo">NUEVO</span> ${st.total} cotizaciones · <b>${st.ejecutadas}</b> ejecutadas · <b>${st.rechazadas}</b> rechazadas · <b>${st.expiradas}</b> expiradas · <b>${st.cerradas}</b> sin operar${st.total?` · cierre <b>${Math.round(100*st.ejecutadas/Math.max(1,st.total-st.abiertas))} %</b>`:''}</div>`;
+    if(!qs.length) body.insertAdjacentHTML('beforeend', `<div class="empty">${a.scope==='cliente'&&!S.client?'Seleccione un cliente.':'Todavía no se ha mostrado ningún precio.'}</div>`);
+    qs.forEach(q=>body.appendChild(quoteCard(q)));
+  } else if(a.table){ body.classList.add('astable'); renderDock(body, {perms, onAction}); }
   else if(!list.length){ body.innerHTML = `<div class="empty">${a.scope==='cliente'&&!S.client?'Seleccione un cliente para ver su actividad (⌘K).':'Sin operaciones que mostrar.'}</div>`; }
   else list.forEach(o=>body.appendChild(opCard(o)));
   $$('[data-scope]',box).forEach(b=>b.onclick=()=>{ a.scope=b.dataset.scope; renderActivity(); });
@@ -347,6 +363,7 @@ export function paintPanel(key, body){
       <div><span class="dot ${C.cfg.switchOn?'ok':'warn'}"></span> ${gt('cobertura')} <b>${C.cfg.switchOn?'ON · libros':'OFF · mercado'}</b></div>
       <div><span class="dot ok"></span> Último tick <b class="mono" data-lasttick>${new Date().toLocaleTimeString('es-ES')}</b> · pares <b>${PAIRS.length}</b></div>
       <div><span class="dot ${envLabel()==='PRO'?'ok':'warn'}"></span> Entorno <b>${envLabel()}</b> · ${esc(S.user.nombre)} · ${esc(gchan(S.user.canal))}</div>
+      ${C.cfg.capaNuevo ? (()=>{ const st=C.quoteStats(); return `<div><span class="dot ${st.abiertas?'warn':'ok'}"></span> Cotizaciones hoy <b>${st.total}</b> · cierre <b>${st.total-st.abiertas? Math.round(100*st.ejecutadas/(st.total-st.abiertas)):0} %</b> · sin cerrar <b>${st.rechazadas+st.expiradas+st.cerradas}</b> <span class="pchip nuevo">NUEVO</span></div>`; })() : ''}
     </div>`; return;
   }
   if(key==='ultimas'){
@@ -435,6 +452,9 @@ function renderRPanel({onLogout,onToggleConsole,onTheme}){
       <div class="row"><span>${gt('cobertura')}<br><small class="muted">OFF = el proveedor cubre en mercado</small></span><button class="switch ${C.cfg.switchOn?'on':''}" data-switch><i></i>${C.cfg.switchOn?'ON':'OFF'}</button></div>
       <div class="row"><span>Observaciones obligatorias<br><small class="muted">en spot con liquidación externa</small></span><button class="switch ${C.cfg.obsObligatorias?'on':''}" data-obsreq><i></i>${C.cfg.obsObligatorias?'ON':'OFF'}</button></div>
       <div class="row"><span>Rechazos aleatorios<br><small class="muted">last look 3 % · asiento 2 %</small></span><button class="switch ${C.cfg.rechazosAleatorios?'on':''}" data-rechazos><i></i>${C.cfg.rechazosAleatorios?'ON':'OFF'}</button></div>
+      <div class="sect">Capa aiRoss <span class="pchip nuevo">NUEVO</span></div>
+      <div class="row"><span>Mostrar la capa nueva<br><small class="muted">explicación del precio, tope de margen, cotizaciones, asistente, semáforo</small></span><button class="switch ${C.cfg.capaNuevo?'on':''}" data-capa><i></i>${C.cfg.capaNuevo?'ON':'OFF'}</button></div>
+      <div class="row"><span>Tope de margen manual<br><small class="muted">pips por encima del margen del cliente</small></span><span class="seg sm">${[6,12,20].map(v=>`<button data-tope="${v}" class="${C.cfg.markupMaxPips===v?'on':''}">${v}</button>`).join('')}</span></div>
       <div class="sect">Sesión</div>
       <button class="item" data-go="LOGOUT">Salir</button>
     </div><div class="p-foot">${esc(BRAND.name)} v${BRAND.version} · prototipo navegable · sin conexión real</div>`;
@@ -444,6 +464,8 @@ function renderRPanel({onLogout,onToggleConsole,onTheme}){
     else if(g==='ACT'){ S.act.collapsed=!S.act.collapsed; renderActivity(); } else if(g==='CTX'){ S.ctxbar.collapsed=!S.ctxbar.collapsed; renderCtxBar(); } else if(g==='K') openPalette(); else if(g==='POPACT') popout('actividad'); else if(g==='POPPX') popout('precios'); else if(g==='POPPOS') popout('posicion'); else if(g==='RESTORE') restoreLayout(); else if(g==='FORGET') forgetLayout();
     else if(g==='CONSOLE') onToggleConsole(); else if(g==='CONSOLEWIN') popout('consola'); else if(g==='LOGOUT') onLogout(); });
   $$('[data-theme]',p).forEach(b=>b.onclick=()=>{ onTheme(b.dataset.theme); renderRPanel({onLogout,onToggleConsole,onTheme}); });
+  $('[data-capa]',p).onclick=()=>{ C.cfg.capaNuevo=!C.cfg.capaNuevo; C.log('core',`capa aiRoss ${C.cfg.capaNuevo?'ON':'OFF'}`,{}); renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); renderCenter(); renderActivity(); renderPanels(); C.notifyOps(); };
+  $$('[data-tope]',p).forEach(b=>b.onclick=()=>{ C.cfg.markupMaxPips=+b.dataset.tope; renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); toast(`Tope de margen: ${C.cfg.markupMaxPips} pips`); });
   $('[data-rechazos]',p).onclick=()=>{ C.cfg.rechazosAleatorios=!C.cfg.rechazosAleatorios; C.log('core',`Rechazos aleatorios ${C.cfg.rechazosAleatorios?'ON':'OFF'}`,{}); renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); };
   $('[data-obsreq]',p).onclick=()=>{ C.cfg.obsObligatorias=!C.cfg.obsObligatorias; C.log('core',`Observaciones obligatorias ${C.cfg.obsObligatorias?'ON':'OFF'}`,{}); renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); renderCenter(); toast(C.cfg.obsObligatorias?'Observaciones obligatorias en claves de arbitraje.':'Observaciones opcionales (modo demo).'); };
   $('[data-switch]',p).onclick=()=>{ C.cfg.switchOn=!C.cfg.switchOn; C.log('core',`Cobertura en libros ${C.cfg.switchOn?'ON':'OFF'}`,{}); renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); };

@@ -32,10 +32,10 @@ Fuente: `2Trade-Trato/contexto/2026-09-20-camilo-Review-Trato-v0.1/` y `peticion
 | P-009 | Bróker responsive | heredado | ✅ v0.2 (< 900 px apilado; la vista profesional se apila, no va en pestañas) |
 | P-010 | Fechas: tenor desde spot, arbitraje, disponibilidad, formato | heredado | ✅ v0.2 |
 | P-011 | Boleta: beneficio, botones, observaciones, importes | heredado | ✅ v0.2 |
-| P-012 | Tope al mark-up manual y aviso fuera de mercado | **nuevo aiRoss** | ⏸ aparcada (decisión Maxi 20-sep) |
-| P-013 | Trazabilidad de cotizaciones no cerradas | **nuevo aiRoss** | ⏸ aparcada |
-| P-014 | Multibanco: varios proveedores y mejor precio | **nuevo aiRoss** | ◐ v0.3: selector de liquidez (A/B/C/mejor precio) en la columna de Actividad, por pedido de Maxi 21-sep; falta trazabilidad de qué proveedor ganó cada operación en el detalle |
-| P-015 | Explicación del precio en una frase | **nuevo aiRoss** | ◐ v0.3: el *Asistente de mesa* (demo, chip NUEVO) explica precio, posición y glosario a demanda; la frase automática dentro del ticket sigue aparcada |
+| P-012 | Tope al mark-up manual y aviso fuera de mercado | **nuevo aiRoss** | ✅ v0.3.1 (Maxi 21-sep: «metamos todo lo nuevo»); tope 6/12/20 pips en ☰, aviso a 25 pips |
+| P-013 | Trazabilidad de cotizaciones no cerradas | **nuevo aiRoss** | ✅ v0.3.1: registro de cada precio mostrado con desenlace, filtro Cotiz., tasa de cierre, asistente |
+| P-014 | Multibanco: varios proveedores y mejor precio | **nuevo aiRoss** | ✅ v0.3.1: selector + proveedor ganador guardado por operación (tarjeta, detalle, asistente) |
+| P-015 | Explicación del precio en una frase | **nuevo aiRoss** | ✅ v0.3.1: frase automática en el ticket + asistente |
 | P-016 | Accesibilidad básica | propuesta | ◐ v0.2 parcial (teclado en lados, Escape/foco en modales, aria-live); falta contraste de `ink-3`/`warn` y flechas de dirección |
 | P-017 | Presentación y datos | pulido | ✅ v0.2 |
 | P-018 | Higiene de código | higiene | ◐ v0.2 (saldo, rechazos como switch); pendiente: RFS huérfanos al re-renderizar tiles, estados muertos |
@@ -65,6 +65,7 @@ _(vacío)_
 | R-02 | Market data real (Yahoo Finance u otra fuente pública) con refresco periódico y fallback al random walk | Lucio tip 2 | CORS: proxy mínimo o fichero JSON regenerado por GitHub Action cada N minutos |
 | R-03 | Multi-idioma por usuario (ES/EN) con glosario de negocio validado | Lucio tip 3 · B-02 | "seguro de cambio" → *FX forward*; "clave de arbitraje" → *FX spot (non-account)* a validar |
 | R-04 | Capa "nuevo" aiRoss: P-012 tope mark-up, P-013 trazabilidad de cotizaciones no cerradas, P-014 multibanco, P-015 explicación del precio | Camilo | aparcadas por decisión de Maxi (20-sep) |
+| R-08 | Portal de empresas: multiventana y ticket de dos campos (resto del benchmark) | v0.3 | pendiente |
 | R-07 | **Multiproducto**: estructurados y derivados de terceros en la distribución ("no tienen estructuras", mail de Lucio 16-sep y su tip de discurso 21-sep) | Lucio | mejora de producto, decidir con Maxi cuándo abre la capa nueva |
 | R-06 | Precios coherentes entre ventanas (una ventana maestra de market data) | UNKNOWNS #13 | con R-02 |
 | R-05 | Rediseño v0.3: layout propio (no clon), navegación vertical de operaciones, barra de cliente abajo, ≥ 2 filas de paneles, multiventana para varias pantallas | Maxi 21-sep | ✅ v0.3.0 en rama `v0.3-layout` → `/v3/` (ver CHANGELOG) |

@@ -51,6 +51,7 @@ export function openTicket(tileEl, tile, dir, {perms, onDone}){
         <div class="row"><span>Contravalor</span><span class="v" data-contra>—</span></div>
         <div class="final"><small>Precio final cliente</small><span data-final>—</span></div>
         <div class="bar"><i data-bar style="width:100%"></i></div>
+        ${C.cfg.capaNuevo ? `<div class="explain" data-explain><span class="pchip nuevo">NUEVO</span><span data-explain-txt>—</span></div><div data-fm class="notice err hide"></div>` : ''}
       </div>
       <div>
         <div class="row"><span>Precio trading</span><span class="v" data-spotT>—</span></div>
@@ -82,6 +83,8 @@ export function openTicket(tileEl, tile, dir, {perms, onDone}){
     }
     b.contra = C.contravalor(pair, nominal, divOp, b.precioFinal);
     b.beneficio = C.beneficioEUR({ pair, nominal, divOp, precioFinal:b.precioFinal, spotT:b.spotT, ptsCliente:b.ptsCliente, pts:b.pts });
+    b.proveedor = pt.src ? (b.clientBuysBase ? pt.src.ask : pt.src.bid) : null;
+    b.fueraMercado = Math.abs(b.precioFinal - (b.spotT + (b.pts||0))) / pip;   // pips totales sobre el precio de trading a plazo
     return b;
   }
   function paint(b){
@@ -89,9 +92,21 @@ export function openTicket(tileEl, tile, dir, {perms, onDone}){
     set('[data-spotT]', fmtN(b.spotT,d)); set('[data-finalspot]', fmtN(b.finalSpot,d)); set('[data-final]', fmtN(b.precioFinal,d)); set('[data-contra]', fmtN(b.contra,2));
     set('[data-pts]', fmtN(b.ptsCliente/pip,1)+' pts'); set('[data-ptsfdc]', b.ptsFDC!==undefined? fmtN(b.ptsFDC/pip,1)+' pts':'—'); set('[data-ptsflex]', b.ptsFlex!==undefined? fmtN(b.ptsFlex/pip,1)+' pts':'—');
     set('[data-spotpips]', fmtN(b.spotPips,1)); set('[data-fwdpips]', fmtN(b.fwdPips,1)); set('[data-pf-v]', fmtN(b.precioFinal,d)); set('[data-benef]', fmtN(b.beneficio,2));
+    if(C.cfg.capaNuevo){
+      // P-015 · explicación del precio en una frase
+      const [base, quote] = pair.split('/'); const compra = b.clientBuysBase ? base : quote, vende = b.clientBuysBase ? quote : base;
+      const nivel = client.generic ? 'sin margen de cliente' : (client.margenPersonalizado ? 'margen personalizado' : `nivel ${client.nivel}`);
+      const txt = `Mercado ${fmtN(b.spotT,d)}${b.proveedor?' ('+PX.providerName(PX.PROVIDERS.find(p=>p.short===b.proveedor)?.id||'BEST')+')':''} ${b.sign>0?'+':'−'} ${fmtN(b.spotPips,1)} pips de margen (${nivel})${tipoOrden==='FORWARD'?` ${b.pts>=0?'+':'−'} ${fmtN(Math.abs(b.ptsCliente)/pip,1)} puntos a ${esc(tile.tenor)}`:''} = ${fmtN(b.precioFinal,d)}. El cliente compra ${compra} y vende ${vende}.`;
+      set('[data-explain-txt]', txt); op.explicacion = txt; op.proveedor = b.proveedor;
+      // P-012 · aviso de precio fuera de mercado
+      const fm = $('[data-fm]',tileEl); if(fm){ if(b.fueraMercado > C.cfg.fueraMercadoPips){ fm.textContent = `Precio fuera de mercado: ${fmtN(b.fueraMercado,1)} pips sobre el trading (tope de aviso ${C.cfg.fueraMercadoPips}). Revise el margen antes de aceptar.`; fm.classList.remove('hide'); } else fm.classList.add('hide'); }
+      // P-013 · la cotización mostrada queda registrada
+      if(quoteRec) C.updateQuote(quoteRec, { precioTrading:+b.spotT.toFixed(d), precioCliente:+b.precioFinal.toFixed(d), spotPips:+b.spotPips.toFixed(1), proveedor:b.proveedor });
+    }
   }
+  let quoteRec = null;
   function expire(){
-    setState('Precio expirado'); tileEl.classList.add('expired');
+    C.closeQuote(quoteRec, 'expirada'); setState('Precio expirado'); tileEl.classList.add('expired');
     const acc=$('[data-accept]',tileEl), sol=$('[data-rfs]',tileEl);
     if(acc){ acc.disabled=true; acc.classList.replace('btn-primary','btn-ghost'); } if(sol){ sol.classList.replace('btn-ghost','btn-primary'); }
     $('[data-bar]',tileEl).style.width='0%'; toast('Precio expirado: solicite precio de nuevo.');
@@ -104,29 +119,32 @@ export function openTicket(tileEl, tile, dir, {perms, onDone}){
   function startRFS(){
     rfs?.close(); unexpire(); setState('Solicitud pendiente'); C.log('fix', `RFS → proveedor: ${pair} ${curDir} ${divOp} ${fmtN(nominal,0)} ${tipoOrden}`, {idGlobal:op.idGlobal});
     setTimeout(()=>{ if(frozen) return; setState('Precio recibido');
+      if(C.cfg.capaNuevo){ C.closeQuote(quoteRec, 'rechazada', {motivo:'nueva solicitud'}); quoteRec = C.logQuote({ cliente:client.id, clienteNombre:client.nombre, par:pair, dir:curDir, divOp, nominal, tipoOp, tipoOrden, fechaValor:PX.iso(valueDate), canal:S.user.canal, usuario:S.user.user, idGlobal:op.idGlobal }); }
       rfs = PX.openRFS(pair, q => { if(frozen) return; paint(compute(q)); $('[data-bar]',tileEl).style.width = (q.left/60*100)+'%'; if(q.left<=0){ rfs.close(); expire(); } });
     }, 350);
   }
   startRFS();
 
-  $('[data-close]',tileEl).onclick = ()=>{ rfs?.close(); onDone(); };
+  $('[data-close]',tileEl).onclick = ()=>{ rfs?.close(); C.closeQuote(quoteRec, 'cerrada', {motivo:'ticket cerrado sin operar'}); onDone(); };
   $$('[data-dir]',tileEl).forEach(b=>b.onclick=()=>{ if(frozen) return; curDir=b.dataset.dir; $$('[data-dir]',tileEl).forEach(x=>x.classList.toggle('on', x.dataset.dir===curDir)); op.dir=curDir; startRFS(); });
   $('[data-swapdir]',tileEl).onclick = ()=>{ if(frozen) return; curDir = curDir==='COMPRAR'?'VENDER':'COMPRAR'; $$('[data-dir]',tileEl).forEach(x=>x.classList.toggle('on', x.dataset.dir===curDir)); op.dir=curDir; startRFS(); };
   $('[data-fdc]',tileEl)?.addEventListener('change', e=>{ fdc = new Date(e.target.value+'T12:00:00'); op.fechaDispCliente = e.target.value; });
-  const bump = k => { if(frozen||!last) return; override = (override ?? last.spotPips) + k; if(override<0) override=0; };
+  const bump = k => { if(frozen||!last) return; override = (override ?? last.spotPips) + k; if(override<0) override=0; if(C.cfg.capaNuevo && override > C.cfg.markupMaxPips){ override = C.cfg.markupMaxPips; toast(`Tope de margen de la mesa: ${C.cfg.markupMaxPips} pips. Por encima hace falta autorización del supervisor.`,'err'); } };
   $$('[data-pm]',tileEl).forEach(b=>b.onclick=()=>{ bump(+b.dataset.pm); });
   $$('[data-pf]',tileEl).forEach(b=>b.onclick=()=>{ bump(+b.dataset.pf * (last?.sign||1)); });
   $$('[data-bn]',tileEl).forEach(b=>b.onclick=()=>{ bump(+b.dataset.bn); });
   $('[data-mk]',tileEl).onchange = e => { markupOk = e.target.checked; };
   $('[data-rfs]',tileEl).onclick = ()=>{ if(frozen) return; startRFS(); };
-  $('[data-reject]',tileEl).onclick = ()=>{ if(frozen) return; rfs?.close(); setState('Solicitud pendiente'); toast('Precio rechazado. Puede cambiar dirección o volver a solicitar.'); };
+  $('[data-reject]',tileEl).onclick = ()=>{ if(frozen) return; rfs?.close(); C.closeQuote(quoteRec, 'rechazada', {motivo:'rechazado por el cliente'}); setState('Solicitud pendiente'); toast('Precio rechazado. Queda registrado como cotización no cerrada.'); };
   $('[data-accept]',tileEl).onclick = async ()=>{
     if(frozen || !last || op.estado!=='Precio recibido'){ toast('No hay precio ejecutable vigente.','err'); return; }
     frozen = true; rfs?.close(); $$('button', tileEl).forEach(b=>{ if(!b.dataset.close) b.disabled=true; });
     Object.assign(op, { dir:curDir, precioCliente:+last.precioFinal.toFixed(d), precioOficina:+(last.spotT + (last.pts||0)).toFixed(d), /* P-006: oficina a plazo */ contra:last.contra, ptsFwd:last.ptsCliente, spotPips:last.spotPips, fwdPips:last.fwdPips,
       beneficio:last.beneficio, markupOk, clientBuysBase:last.clientBuysBase, tsPrecio:new Date().toISOString() });
+    C.closeQuote(quoteRec, 'ejecutada', {ref:op.ref});
     C.addOp(op);
     await C.executeDeal(op, { onState:setState, preErrors:[] });
+    if(quoteRec && op.ref) C.updateQuote(quoteRec, {ref:op.ref});
     showSummary();
   };
   function showSummary(){
@@ -337,6 +355,8 @@ export function masInfo(op, {perms}={}){
   const g4 = interno ? [ kv('Spot pips', Nn(op.spotPips,1)), kv('Fwd pips', Nn(op.fwdPips,1)), op.ptsFwd!==undefined? kv('Puntos fwd (precio)', Nn(op.ptsFwd/PX.pip(op.par),1)) : '', kv('Beneficio estimado', op.beneficio!==undefined? Nn(op.beneficio)+' €':'—'),
     kv('Margen', op.markupOk===false? '<span class="st warn">SIN CONFIRMAR</span>' : '<span class="st ok">CONFIRMADO</span>', false), op.obs? kv('Observaciones', esc(op.obs), false) : '', kv('Origen', esc(op.origen==='core'?'alta en el core (back-to-front)':'plataforma'), false) ] : [];
   const g5 = [ kv('Cuenta operativa', esc(F(op.cuenta))), op.cuenta2? kv('Cuenta operativa 2', esc(op.cuenta2)) : '' ];
+  if(interno && op.proveedor) g4.push(kv('Proveedor de liquidez', esc(PX.providerName(PX.PROVIDERS.find(p=>p.short===op.proveedor)?.id||'BEST'))+' <span class="pchip nuevo">NUEVO</span>', false));
+  if(interno && op.explicacion) g4.push(`<div class="kv" style="grid-column:1/-1"><span>Explicación del precio <span class="pchip nuevo">NUEVO</span></span><span style="font-family:var(--font);font-weight:400;white-space:normal">${esc(op.explicacion)}</span></div>`);
   const body = `<div class="two">${grp('Operación', g1.filter(Boolean))}${grp('Importes y precios', g2.filter(Boolean))}</div><div class="two" style="margin-top:14px">${grp('Fechas', g3.filter(Boolean))}${grp(interno?'Márgenes y mark-up':'Cuentas', interno? g4.filter(Boolean) : g5.filter(Boolean))}</div>${interno? `<div style="margin-top:14px">${grp('Cuentas', g5.filter(Boolean))}</div>`:''}`;
   modal({ title:`${esc(gl(op.tipoOp))} · ${esc(op.ref||op.idGlobal)} · ${esc(op.par)}`, width:860, body, actions:[{label:'Cerrar', cls:'btn-primary', onClick:a=>a.close()}] });
 }

@@ -94,7 +94,7 @@ export function openRFS(pair, onTick){
   const h = setInterval(()=>{
     if(!alive) return;
     const pt = tradingPrice(pair); const tight = RATES[pair].spread * pip(pair) * 0.15;
-    onTick({ bid: pt.bid + tight, ask: pt.ask - tight, mid: pt.mid, left: Math.max(0, 60 - Math.floor((Date.now()-started)/1000)) });
+    onTick({ bid: pt.bid + tight, ask: pt.ask - tight, mid: pt.mid, src: pt.src, left: Math.max(0, 60 - Math.floor((Date.now()-started)/1000)) });
   }, 500);
   return { close(){ alive=false; clearInterval(h); }, get alive(){ return alive; } };
 }

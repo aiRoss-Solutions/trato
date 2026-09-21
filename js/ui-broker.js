@@ -4,7 +4,7 @@ import * as C from './core.js';
 import * as PX from './prices.js';
 import { S } from './state.js';
 import { label as gl, t as gt, channel as gchan } from './glossary.js';
-import { G10, PAIRS, FLAGS, BRAND, CLIENTS, TENORS } from './data.js';
+import { G10, PAIRS, FLAGS, BRAND, CLIENTS, TENORS, RATES } from './data.js';
 import { renderDock } from './ui-blotters.js';
 import { openCancelacion, masInfo } from './ui-ticket.js';
 
@@ -60,10 +60,10 @@ function renderTop(cbs){
 function renderMain(){
   const main = q('[data-main]');
   if(view==='std'){
-    main.innerHTML = `<div class="b-left"><div class="card" style="display:flex;flex-direction:column;min-height:0"><div class="c-h">Operaciones</div><div class="dock" data-blotter style="height:auto;flex:1;border-top:0"></div></div></div>
+    main.innerHTML = `<div class="b-left">${C.cfg.capaNuevo?`<div class="card situ" data-situ><div class="c-h">Situación <span class="pchip nuevo">NUEVO</span></div><div class="situ-body" data-situbody></div></div>`:''}<div class="card" style="display:flex;flex-direction:column;min-height:0"><div class="c-h">Operaciones</div><div class="dock" data-blotter style="height:auto;flex:1;border-top:0"></div></div></div>
       <div class="b-right"><div class="card"><div class="c-h">Precios <span style="flex:1"></span><select data-rdate class="small" style="height:24px;padding:0 6px">${TENORS.map(t=>`<option value="${t.k}" ${t.k==='SPOT'?'selected':''}>${t.l}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" data-addccy>Añadir divisas</button></div><div class="rates" data-rates></div></div>
       <div class="card" data-opmod></div></div>`;
-    renderRates(); renderOpModule($('[data-opmod]',main), 0); renderBlotter();
+    renderRates(); renderOpModule($('[data-opmod]',main), 0); renderBlotter(); renderSituacion();
   } else {
     main.innerHTML = `<div style="display:grid;grid-template-rows:auto 1fr;gap:12px;min-height:0"><div class="pro-grid" data-pro></div><div class="card" style="display:flex;flex-direction:column;min-height:0"><div class="c-h">Operaciones</div><div class="dock" data-blotter style="height:auto;flex:1;border-top:0"></div></div></div>`;
     const pro = $('[data-pro]',main); modules = [];
@@ -77,19 +77,34 @@ function renderMain(){
   q('[data-addccy]')?.addEventListener('click', ()=>{ const body=h(`<div class="form"><div class="field full"><label>Par</label><select data-p>${PAIRS.filter(p=>!rates.includes(p)).map(p=>`<option>${p}</option>`).join('')}</select></div></div>`);
     modal({title:'Añadir divisas',width:420,body,actions:[{label:'Cancelar',onClick:a=>a.close()},{label:'Añadir',cls:'btn-primary',onClick(a){ rates.push($('[data-p]',body).value); renderRates(); a.close(); }}]}); });
 }
+function renderSituacion(){
+  const b=q('[data-situbody]'); if(!b) return; const c=S.client;
+  const vivos = C.ops.filter(o=>o.cliente===c.id && o.estado==='Ejecutada' && /^SEGURO DE CAMBIO/.test(o.tipoOp) && (o.dispon??o.nominal)>0).sort((x,y)=>x.fechaValor<y.fechaValor?-1:1);
+  const prox = vivos.filter(o=>(new Date(o.fechaValor)-new Date())/86400000<=45);
+  const pos={}; for(const o of vivos){ const div=o.par.split('/').find(x=>x!=='EUR')||o.divOp; const sign=(o.dir==='COMPRAR')===(o.divOp===div)?1:-1; const vivo=o.dispon??o.nominal; pos[div]=(pos[div]||0)+sign*(o.divOp===div?vivo:o.contra*vivo/o.nominal); }
+  const st = C.quoteStats(c.id);
+  b.innerHTML = `<div class="situ-grid">
+    <div><small>Posición viva</small>${Object.keys(pos).length? Object.entries(pos).map(([d,v])=>`<div class="mono"><span class="${v>0?'buy':'sell'}">${v>0?'compra':'vende'}</span> ${fmtN(Math.abs(v),0)} ${d}</div>`).join('') : '<div class="muted">sin forwards vivos</div>'}</div>
+    <div><small>Próximos vencimientos (45 días)</small>${prox.length? prox.slice(0,3).map(o=>`<div class="mono">${PX.es(o.fechaValor)} · ${esc(o.ref)} · ${fmtN(o.dispon??o.nominal,0)} ${esc(o.divOp)}</div>`).join('') : '<div class="muted">ninguno</div>'}</div>
+    <div><small>Línea de riesgo FX</small>${c.lineas.length? c.lineas.map(l=>`<div class="mono">${fmtN(l.disp,0)} / ${fmtN(l.limite,0)} ${l.div}</div>`).join('') : '<div class="muted">sin línea</div>'}</div>
+    <div><small>Sus cotizaciones</small><div class="mono">${st.total} pedidas · ${st.ejecutadas} cerradas${st.total-st.abiertas?` · ${Math.round(100*st.ejecutadas/(st.total-st.abiertas))} %`:''}</div></div>
+  </div>`;
+}
 function renderRates(){
   const box=q('[data-rates]'); if(!box) return;
-  box.innerHTML = rates.map(p=>`<div class="rate" data-rate="${p}"><span class="p">${FLAGS[p.split('/')[0]]||''} ${p}</span><span class="v" data-rv="${p}">—</span><button class="icon-btn" data-rm="${p}" title="Quitar" style="width:22px;height:22px">✕</button></div>`).join('');
+  box.innerHTML = rates.map(p=>`<div class="rate" data-rate="${p}"><span class="p">${FLAGS[p.split('/')[0]]||''} ${p}</span><span class="v" data-rv="${p}">—</span>${C.cfg.capaNuevo?`<span class="sema" data-sema="${p}" title="Semáforo: dónde está el precio de hoy entre el mínimo y el máximo del último año"><i></i></span>`:''}<button class="icon-btn" data-rm="${p}" title="Quitar" style="width:22px;height:22px">✕</button></div>`).join('');
   $$('[data-rm]',box).forEach(b=>b.onclick=e=>{ e.stopPropagation(); rates=rates.filter(x=>x!==b.dataset.rm); renderRates(); });
   $$('[data-rate]',box).forEach(r=>r.onclick=()=>{ const m=modules[0]; if(m){ m.set('pair', r.dataset.rate); } });
   onTick();
 }
+function semaforo(p){ const r=RATES[p]; const lo=r.mid*0.93, hi=r.mid*1.07; const x=Math.max(0,Math.min(1,(PX.tradingPrice(p).mid-lo)/(hi-lo))); return { pos:x, lo, hi, txt: x<0.33?'zona baja del año':x>0.66?'zona alta del año':'zona media del año' }; }
 function onTick(){
   const tenor = q('[data-rdate]')?.value || 'SPOT'; const vd = PX.tenorDate(tenor);
   for(const p of rates){ const n=$(`[data-rv="${p}"]`,root); if(!n) continue; const pt=PX.tradingPrice(p); const m=C.clientMarginPorMil(S.client, tenor==='SPOT'||tenor==='TOD'||tenor==='TOM'?'spot':'fwd');
     const b=C.buildPrice({pair:p,dir:'COMPRAR',divOp:p.split('/')[1],pt,valueDate: ['TOD','TOM','SPOT'].includes(tenor)?null:vd, marginPorMil:m}); const v=b.precioFinal; const k='r'+p;
     const arr = prevPx[k]===undefined?'':v>prevPx[k]?'<span class="arrow up">▲</span>':v<prevPx[k]?'<span class="arrow down">▼</span>':''; prevPx[k]=v; n.innerHTML = `${fmtN(v,PX.dec(p))} ${arr}`; }
   modules.forEach(m=>m.tick());
+  if(C.cfg.capaNuevo) for(const p of rates){ const e=$(`[data-sema="${p}"] i`,root); if(!e) continue; const sm=semaforo(p); e.style.left=(sm.pos*100)+'%'; e.parentElement.title=`Semáforo: ${sm.txt} · mín ${fmtN(sm.lo,PX.dec(p))} · máx ${fmtN(sm.hi,PX.dec(p))} (último año, simulado)`; e.parentElement.className='sema '+(sm.pos<0.33?'low':sm.pos>0.66?'high':'mid'); }
 }
 
 // ---------- módulo de operación ----------
@@ -127,7 +142,7 @@ function renderOpModule(card, idx){
     Q('[data-vd]').onchange=e=>{ const dt=new Date(e.target.value+'T12:00:00'); if(!PX.isBiz(dt)){ toast('Fines de semana y festivos no son seleccionables. Ajustado al siguiente día hábil.'); st.vd=PX.iso(PX.addBiz(dt,1)); } else st.vd=e.target.value; paint(); };
     Q('[data-fdisp]')?.addEventListener('change',e=>{ st.fdisp=e.target.value; });
     Q('[data-lim]')?.addEventListener('change',e=>{ st.lim=e.target.value; }); Q('[data-fval]')?.addEventListener('change',e=>{ st.fval=e.target.value; });
-    Q('[data-start]')?.addEventListener('click', start); Q('[data-cancel]')?.addEventListener('click', ()=>{ st.rfs?.close(); st.live=false; paint(); }); Q('[data-hire]')?.addEventListener('click', hire);
+    Q('[data-start]')?.addEventListener('click', start); Q('[data-cancel]')?.addEventListener('click', ()=>{ st.rfs?.close(); C.closeQuote(st.quote,'rechazada',{motivo:'cancelado por el cliente'}); st.live=false; paint(); }); Q('[data-hire]')?.addEventListener('click', hire);
     if(st.pair) paintPrice();
   }
   function ctxFor(){ return { tipoOrden: st.op==='CONTADO'?'CONTADO':'FORWARD', tipoOp: st.tipo!=='SPOTFWD'? st.tipo : st.op==='CONTADO'?'CONVERSIÓN': st.op==='SC'?'SEGURO DE CAMBIO':'SEGURO DE CAMBIO FLEXIBLE', divOp: st.divSel==='base'? st.pair.split('/')[0] : st.pair.split('/')[1], vd: new Date(st.vd+'T12:00:00') }; }
@@ -136,6 +151,7 @@ function renderOpModule(card, idx){
     const b = C.buildPrice({ pair:st.pair, dir:st.dir, divOp, pt, valueDate: tipoOrden==='FORWARD'? vd:null, marginPorMil:m }); st.last=b;
     const n=$('[data-p]',card); if(!n) return; const k='m'+idx; const cls = prevPx[k]===undefined?'':b.precioFinal>prevPx[k]?'up':b.precioFinal<prevPx[k]?'down':''; prevPx[k]=b.precioFinal;
     n.className='p '+cls; n.textContent = fmtN(b.precioFinal, PX.dec(st.pair)); if(quote) $('[data-stt]',card).textContent = `precio ejecutable · ${quote.left}s`;
+    if(quote && st.quote){ b.proveedor = quote.src ? (b.clientBuysBase ? quote.src.ask : quote.src.bid) : null; C.updateQuote(st.quote, { precioTrading:+b.spotT.toFixed(PX.dec(st.pair)), precioCliente:+b.precioFinal.toFixed(PX.dec(st.pair)), proveedor:b.proveedor }); }
   }
   function validate(){
     const {tipoOrden,tipoOp,divOp,vd} = ctxFor();
@@ -156,15 +172,16 @@ function renderOpModule(card, idx){
       toast(`${st.tipo} enviada a mercado.`,'ok'); return;
     }
     st.live=true; paint(); $('[data-stt]',card).textContent='solicitando precio…'; C.log('fix',`RFS → proveedor: ${st.pair} ${st.dir} ${v.divOp} ${fmtN(st.amount,0)}`,{canal:'WEB'});
-    st.rfs?.close(); st.rfs = PX.openRFS(st.pair, qq=>{ if(st.frozen) return; paintPrice(qq); if(qq.left<=0){ st.rfs.close(); st.live=false; toast('Precio expirado.'); paint(); } });
+    if(C.cfg.capaNuevo){ C.closeQuote(st.quote,'rechazada',{motivo:'nueva solicitud'}); st.quote = C.logQuote({ cliente:S.client.id, clienteNombre:S.client.nombre, par:st.pair, dir:st.dir, divOp:v.divOp, nominal:st.amount, tipoOp:v.tipoOp, tipoOrden:v.tipoOrden, fechaValor:st.vd, canal:'WEB', usuario:S.user.user }); }
+    st.rfs?.close(); st.rfs = PX.openRFS(st.pair, qq=>{ if(st.frozen) return; paintPrice(qq); if(qq.left<=0){ st.rfs.close(); C.closeQuote(st.quote,'expirada'); st.live=false; toast('Precio expirado.'); paint(); } });
   }
   async function hire(){
     const v = validate(); if(!v||!st.last) return; st.frozen=true; st.rfs?.close(); const d=PX.dec(st.pair); const b=st.last;
     const o = { idGlobal:C.nextGlobalId(), cliente:S.client.id, clienteNombre:S.client.nombre, canal:'WEB', usuario:S.user.user, tipoOrden:v.tipoOrden, tipoOp:v.tipoOp, par:st.pair, dir:st.dir, divOp:v.divOp, nominal:st.amount, contra:C.contravalor(st.pair,st.amount,v.divOp,b.precioFinal),
       precioCliente:+b.precioFinal.toFixed(d), precioOficina:+(b.spotT + (b.pts||0)).toFixed(d), ptsFwd:b.ptsCliente, spotPips:b.spotPips, fwdPips:b.fwdPips, beneficio:C.beneficioEUR({pair:st.pair,nominal:st.amount,divOp:v.divOp,precioFinal:b.precioFinal,spotT:b.spotT,ptsCliente:b.ptsCliente,pts:b.pts}),
       fechaOp:PX.iso(today()), fechaValor:st.vd, fechaArbitraje: v.tipoOrden==='FORWARD'? PX.iso(PX.addBiz(v.vd,-1)):null, fechaDispCliente: st.op==='FLEX'? st.fdisp:null, fechaDispEstandar: st.op==='FLEX'? PX.iso(C.fdeFor(v.vd)):null,
-      cuenta: v.tipoOrden==='FORWARD'?S.ctx.linea.n:S.ctx.cargo.n, cuenta2: v.tipoOrden==='FORWARD'?null:S.ctx.abono.n, markupOk:true, estado:'Precio recibido', origen:'trato', tsPrecio:new Date().toISOString(), clientBuysBase:b.clientBuysBase, comision:C.comision(st.amount), cuentaComision:S.ctx.cargo.n };
-    C.addOp(o); const acts=$('[data-acts]',card); acts.innerHTML=`<span data-chip>${stateChip('Precio recibido',C.STATES)}</span>`;
+      cuenta: v.tipoOrden==='FORWARD'?S.ctx.linea.n:S.ctx.cargo.n, cuenta2: v.tipoOrden==='FORWARD'?null:S.ctx.abono.n, markupOk:true, estado:'Precio recibido', origen:'trato', tsPrecio:new Date().toISOString(), clientBuysBase:b.clientBuysBase, comision:C.comision(st.amount), cuentaComision:S.ctx.cargo.n, proveedor:b.proveedor||null };
+    C.closeQuote(st.quote,'ejecutada'); C.addOp(o); const acts=$('[data-acts]',card); acts.innerHTML=`<span data-chip>${stateChip('Precio recibido',C.STATES)}</span>`;
     await C.executeDeal(o,{ onState:s=>{ const c=$('[data-chip]',card); if(c) c.innerHTML=stateChip(s,C.STATES); } });
     consume();
     acts.style.flexWrap='wrap'; acts.innerHTML = `<div style="flex:1 1 100%;font-size:12px;line-height:1.35" class="muted">${o.estado==='Ejecutada'?`Ref. <b class="mono">${o.ref}</b> · comisión <b class="mono">${fmtN(o.comision,2)} €</b> · cuenta <span class="mono">${esc(o.cuenta)}</span>`:`<span style="color:var(--down)">${esc(o.motivo||o.estado)}. Vuelva a solicitar precio.</span>`}</div><div style="display:flex;gap:8px;align-items:center;margin-left:auto">${stateChip(o.estado,C.STATES)}<button class="btn btn-primary btn-sm" data-new>Nueva operación</button></div>`;
@@ -173,7 +190,7 @@ function renderOpModule(card, idx){
   function consume(){ if(firma && firma.ops!==null){ firma.ops--; C.log('ws','core.firma.descontar()',{restantes:firma.ops}); } renderFoot(); }
   paint();
 }
-function renderBlotter(){ const d=q('[data-blotter]'); if(!d) return; S.dock.tab = S.dock.tab==='usuario' ? 'cliente' : S.dock.tab;
+function renderBlotter(){ renderSituacion(); const d=q('[data-blotter]'); if(!d) return; S.dock.tab = S.dock.tab==='usuario' ? 'cliente' : S.dock.tab;
   renderDock(d, { perms, onAction(action,op){ if(action==='cancelar') openCancelacion(op,{perms,onDone:renderBlotter}); else if(action==='cancelarOrden'){ C.cancelOrder(op); toast('Orden cancelada.','ok'); } else if(action==='masInfo') masInfo(op,{perms}); else if(action==='anticipar') toast('El anticipo se solicita a través de su gestor.','err'); } });
   const t=$('[data-tab="usuario"]',d); if(t) t.remove(); }
 function renderFoot(){

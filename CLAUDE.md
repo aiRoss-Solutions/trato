@@ -76,8 +76,8 @@ docs/CHANGELOG.md     qué cambió en cada versión
 ## Estado 20-sep-2026 · decisión vigente
 - Camilo revisó v0.1 (44 defectos, 18 peticiones; material en la carpeta Dropbox compartida). En v0.2 se implementó **todo lo
   correctivo/heredado** (P-001…P-011, P-017, P-018, parte de P-016).
-- **Decisión de Maxi: de momento solo lo que el sistema de referencia ya tiene. Nada nuevo.** P-012…P-015 (tope mark-up,
-  trazabilidad de cotizaciones no cerradas, multibanco, explicación del precio) están **aparcadas** hasta que él lo diga.
+- **Decisión de Maxi (20-sep): solo lo heredado.** **Revisada el 21-sep: «metamos todo lo nuevo»** → P-012…P-015 implementadas
+  en v0.3.1 con chip NUEVO y un interruptor global (☰ → Capa aiRoss) para apagar la capa en una demo solo heredada.
 - Estado por petición en `docs/PETICIONES.md`.
 
 ## Cómo se pide un cambio (para Lucio, Camilo, Javi)

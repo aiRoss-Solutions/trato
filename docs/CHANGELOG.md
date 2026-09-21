@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.3.1 — 2026-09-21 · capa aiRoss («metamos todo lo nuevo», Maxi)
+Todo con chip **NUEVO** y un interruptor global en ☰ → *Capa aiRoss* para apagarlo en una demo "solo heredado".
+- **P-015 · Explicación del precio en una frase** dentro del ticket: «Mercado 1,1265 (Proveedor A) − 4,5 pips de margen (nivel
+  oro) − 41,5 puntos a 3M = 1,1226. El cliente compra EUR y vende USD». Se guarda con la operación y se ve en el detalle y en el asistente.
+- **P-012 · Tope al margen manual** (☰: 6 / 12 / 20 pips; por encima "hace falta autorización del supervisor") y **aviso de
+  precio fuera de mercado** cuando el precio final se aleja del trading a plazo más de 25 pips.
+- **P-013 · Trazabilidad de cotizaciones no cerradas**: cada precio mostrado (mesa y empresas) queda registrado con su desenlace
+  (ejecutada / rechazada por el cliente / expirada / cerrada sin operar), proveedor, pips y segundos hasta la decisión. Filtro
+  **Cotiz.** en Actividad con tasa de cierre, dato en *Estado de la plataforma*, en la *Situación* del portal y en el asistente
+  («cotizaciones», «tasa de cierre»).
+- **P-014 · Multi-proveedor completo**: el proveedor que dio el precio se guarda en cada operación (tarjeta, detalle, asistente:
+  «quién dio el precio de SC-100400»); selector Mejor precio / A / B / C.
+- **Portal de empresas · Situación** (benchmark CaixaBank): posición viva, próximos vencimientos a 45 días, línea de riesgo y sus
+  cotizaciones; **semáforo de divisa** en cada par (dónde está el precio de hoy entre el mínimo y el máximo anual, simulado).
+- Sincronizado entre ventanas (las cotizaciones viajan en el snapshot).
+
 ## v0.3.0 — 2026-09-21 · de "clon" a plataforma propia (rama `v0.3-layout`, publicada en `/v3/` para comparar con UAT v0.2)
 Decisión de Maxi (21-sep): Trato debe parecer el destilado de varios proyectos de distribución, no un clon. Benchmark en
 `docs/BENCHMARK-v0.3.md`; prompt en `docs/PROMPT-v0.3.md`; incógnitas y defaults en `docs/UNKNOWNS.md`.

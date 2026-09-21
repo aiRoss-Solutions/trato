@@ -571,3 +571,17 @@ html.is-panel,html.is-panel body{height:100%;overflow:hidden}
 .main.v3 .tile .side .lbl{white-space:nowrap;gap:4px}
 .main.v3 .tile .side .lbl b{font-size:9.5px;overflow:hidden;text-overflow:ellipsis}
 .main.v3 .tile .lpsrc{font-size:8.5px;flex-shrink:0}
+/* ===== capa aiRoss (NUEVO): explicación del precio, cotizaciones, situación y semáforo ===== */
+.tile.ticket .explain{display:flex;gap:8px;align-items:flex-start;margin-top:8px;padding:7px 9px;border-radius:6px;background:var(--bg-soft);font-size:11px;line-height:1.45;color:var(--ink-2)}
+.tile.ticket .explain .pchip{flex-shrink:0;margin-top:1px}
+.qstats{font-size:11.5px;padding:8px 10px;color:var(--ink-2);display:flex;gap:6px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:6px}
+.opcard.quote .st{text-transform:capitalize}
+.situ .c-h{gap:8px}
+.situ-body{padding:8px 12px}
+.situ-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;font-size:12px}
+.situ-grid small{display:block;font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-3);font-family:var(--mono);margin-bottom:4px}
+.situ-grid .mono{font-size:11.5px;line-height:1.5}
+.rate .sema{position:relative;width:46px;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--up),var(--warn),var(--down));opacity:.85;margin:0 6px;flex-shrink:0}
+.rate .sema i{position:absolute;top:-3px;width:3px;height:12px;background:var(--navy);border-radius:2px;transform:translateX(-50%);left:50%;transition:left .4s}
+:root[data-theme="sala"] .rate .sema i{background:#fff}
+@media (max-width:900px){ .situ-grid{grid-template-columns:1fr 1fr} }

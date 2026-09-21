@@ -19,7 +19,7 @@ export function log(kind, title, payload){
 export const onLog = f => { consoleSubs.add(f); return ()=>consoleSubs.delete(f); };
 
 // ---------- switch (ON: cliente → core → libros; OFF: proveedor cubre en mercado) ----------
-export const cfg = { switchOn: true, obsObligatorias: true, rechazosAleatorios: false, markupModePerUser: { SALA:'both', TEL:'view', WEB:'none' } };
+export const cfg = { switchOn: true, obsObligatorias: true, rechazosAleatorios: false, markupMaxPips: 12, fueraMercadoPips: 25, capaNuevo: true, markupModePerUser: { SALA:'both', TEL:'view', WEB:'none' } };
 
 // ---------- clientes ----------
 export const clients = () => CLIENTS;
@@ -135,13 +135,23 @@ ops.forEach(o => { if(o.estado==='Ejecutada') applyLinea(o, {silent:true}); }); 
 const opSubs = new Set(); export const onOps = f => { opSubs.add(f); return ()=>opSubs.delete(f); };
 let applying = false;
 export function notifyOps(){ for(const f of opSubs) f(); if(!applying) SYNC.send('ops', snapshot()); }
-export function snapshot(){ const lineas={}; for(const c of CLIENTS) for(const l of c.lineas) lineas[l.n]=l.disp; return { ops, lineas, cfg }; }
+export function snapshot(){ const lineas={}; for(const c of CLIENTS) for(const l of c.lineas) lineas[l.n]=l.disp; return { ops, lineas, cfg, quotes }; }
+
+// ---------- P-013 · trazabilidad de cotizaciones (cerradas o no) ----------
+// Cada precio que se muestra a un cliente queda registrado con su desenlace: ejecutada, rechazada, expirada o cerrada sin operar.
+export const quotes = [];
+let qSeq = 1;
+export function logQuote(q){ const rec = { id:'Q-'+String(qSeq++).padStart(4,'0'), t:new Date().toISOString(), outcome:'abierta', ...q }; quotes.unshift(rec); if(quotes.length>500) quotes.pop(); notifyOps(); return rec; }
+export function updateQuote(rec, patch){ if(!rec) return; Object.assign(rec, patch); notifyOps(); }
+export function closeQuote(rec, outcome, extra={}){ if(!rec || rec.outcome!=='abierta') return; Object.assign(rec, { outcome, tCierre:new Date().toISOString(), segundos: Math.round((Date.now()-new Date(rec.t))/1000), ...extra }); log('core', `cotización ${rec.id} ${outcome}`, { par:rec.par, cliente:rec.clienteNombre, precio:rec.precioCliente, proveedor:rec.proveedor, segundos:rec.segundos }); notifyOps(); }
+export function quoteStats(clienteId){ const list = clienteId ? quotes.filter(q=>q.cliente===clienteId) : quotes; const n = o=>list.filter(q=>q.outcome===o).length; return { total:list.length, ejecutadas:n('ejecutada'), rechazadas:n('rechazada'), expiradas:n('expirada'), cerradas:n('cerrada'), abiertas:n('abierta') }; }
 export function applySnapshot(snap){
   if(!snap) return; applying = true;
   try{
     if(snap.ops){ const byId = new Map(ops.map(o=>[o.idGlobal,o])); const merged = snap.ops.map(n=>{ const cur = byId.get(n.idGlobal); return cur ? Object.assign(cur, n) : n; }); ops.length=0; ops.push(...merged); }
     if(snap.lineas){ for(const c of CLIENTS) for(const l of c.lineas) if(snap.lineas[l.n]!==undefined) l.disp = snap.lineas[l.n]; }
     if(snap.cfg) Object.assign(cfg, snap.cfg);
+    if(snap.quotes){ const byId = new Map(quotes.map(q=>[q.id,q])); const merged = snap.quotes.map(n=>{ const cur=byId.get(n.id); return cur? Object.assign(cur,n) : n; }); quotes.length=0; quotes.push(...merged); }
     for(const f of opSubs) f();
   } finally { applying = false; }
 }
