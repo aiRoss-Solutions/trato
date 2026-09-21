@@ -10,11 +10,15 @@ import * as SYNC from './sync.js';
 import { mountBroker } from './ui-broker.js';
 
 const root = $('#root');
-S.theme = localStorage.getItem('trato.theme.v3') || 'light';   // v0.3: tema claro equilibrado por defecto (navy · blanco · celeste); 'sala' = todo navy, opcional
-applyTheme(S.theme);
+// v0.3: tema claro equilibrado por defecto (navy · blanco · celeste); 'sala' = todo navy, opcional.
+// Clave nueva (v3b) para no heredar lo que guardaron versiones anteriores; ?theme=light|sala fuerza uno; solo se guarda cuando el usuario elige.
+const THEME_KEY = 'trato.theme.v3b';
+const themeParam = new URLSearchParams(location.search).get('theme');
+S.theme = (themeParam==='sala'||themeParam==='light') ? themeParam : (localStorage.getItem(THEME_KEY) || 'light');
+applyTheme(S.theme, {persist:false});
 PX.start();
 
-function applyTheme(t){ S.theme=t; localStorage.setItem('trato.theme.v3',t); document.documentElement.dataset.theme = t==='sala'?'sala':''; SYNC.send('theme', t); }
+function applyTheme(t, {persist=true}={}){ S.theme=t; if(persist){ try{ localStorage.setItem(THEME_KEY,t); }catch{} } document.documentElement.dataset.theme = t==='sala'?'sala':''; SYNC.send('theme', t); }
 
 function login(){
   document.documentElement.dataset.theme='';
@@ -35,7 +39,7 @@ function login(){
   $('[data-enter]',root).onclick=()=>enter(ch);
 }
 function enter(ch){
-  applyTheme(S.theme); const user = USERS[ch]; C.log('core',`login ${ch}`,{usuario:user.user});
+  applyTheme(S.theme, {persist:false}); const user = USERS[ch]; C.log('core',`login ${ch}`,{usuario:user.user});
   root.innerHTML = `<div id="app"></div><div class="console" data-console><div class="c-head"><b>Consola de integración</b><span class="tiny" style="opacity:.7;margin-left:6px">lo que viaja por los canales</span><span style="flex:1"></span><button class="btn btn-ghost btn-sm" data-clear style="color:#fff;border-color:#22408C">Limpiar</button><button class="icon-btn" data-x style="color:#fff">✕</button></div><div class="c-body" data-cbody></div></div>`;
   const app = $('#app'), con = $('[data-console]');
   const cbs = { onLogout(){ if(confirm('¿Cerrar la sesión?')) login(); }, onToggleConsole(){ con.classList.toggle('open'); }, onTheme:applyTheme };
