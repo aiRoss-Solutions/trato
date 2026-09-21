@@ -108,14 +108,12 @@ temas · 375 px sin scroll horizontal · **nuevo:** cada panel abre en ventana y
 la madre; recargar la madre restaura la disposición.
 
 ## 9. UNKNOWNS — lo que el autor de este prompt no sabe y vos tampoco (resolvé antes de diseñar)
-Para cada uno: proponé un default, aplicalo si no bloquea, y anotalo en `docs/UNKNOWNS.md`. Preguntá a Maxi solo los
-marcados ⛔.
-1. ⛔ **Tema por defecto de la sala**: Maxi apunta a fondos navy (el sistema de referencia era negro) pero lo deja en
-   tu mano. Default: navy oscuro por defecto en SALA/TEL, claro en WEB; conmutable. Confirmar con una captura antes del
-   bloque de estilo.
-2. ⛔ **¿Se queda el panel vertical de operaciones y dónde?** Default tras el benchmark: sí, **a la derecha** (patrón
-   "feed de actividad" de los SDP; libera la fila inferior para la segunda fila de paneles), 360 px, plegable, con "ver
-   como tabla" y ventana propia. Si tu análisis dice otra cosa, proponelo con argumento.
+Para cada uno: proponé un default, aplicalo si no bloquea, y anotalo en `docs/UNKNOWNS.md`. Los dos que bloqueaban
+(1 y 2) ya están decididos: no hay nada que preguntar antes de arrancar.
+1. ✅ **Tema por defecto de la sala** — CONFIRMADO por Maxi (21-sep): navy oscuro por defecto en SALA/TEL (`#050F38`
+   base, paneles `#0B1C55`, acento `#2F7BFF`, cian de mercado `#2AA7DF`), claro en WEB; conmutable. Ya no es pregunta.
+2. ✅ **Panel vertical de operaciones** — CONFIRMADO por Maxi (21-sep): se queda, **a la derecha**, 360 px, plegable, con
+   "ver como tabla" y ventana propia. Ya no es pregunta.
 3. **Qué llena la segunda fila por defecto**: posición viva · órdenes vivas · estado de la plataforma · últimas 5
    operaciones. Default: esos cuatro, reordenables por arrastre, guardados con el workspace.
 4. **Altura de la barra inferior de cliente**: una fila densa (cliente + 4 selectores + 6 kv) o dos filas. Default: una
@@ -141,5 +139,5 @@ marcados ⛔.
 1. Benchmark ampliado (qué añadiste y qué te llevás) en `docs/BENCHMARK-v0.3.md`.
 2. **Dos propuestas de layout** en ASCII a 1440×900 (una más cercana a las ideas de Maxi, otra tuya) con pros/contras y
    tu recomendación. Lo mismo, más breve, para el canal empresas.
-3. La lista de §9 con tu default para cada punto y las dos preguntas ⛔ para Maxi.
-4. El plan de commits. Después, esperá el OK de Maxi y arrancá por el bloque (1).
+3. La lista de §9 con tu default para cada punto (1 y 2 ya decididos).
+4. El plan de commits, y arrancá por el bloque (1) sin esperar.
