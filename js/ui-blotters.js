@@ -75,7 +75,7 @@ export function renderDock(root, {perms, onAction}){
       <button data-sub="ol" class="${d.sub==='ol'?'on':''}">Órdenes limitadas</button>
       <button data-sub="co" class="${d.sub==='co'?'on':''}">Alertas</button>
     </span>
-    <button data-tab="posicion" class="${d.tab==='posicion'?'on':''}" ${disabledCli?'disabled title="Sin cliente"':''}>Posición en seguros de cambio</button>
+    <button data-tab="posicion" class="${d.tab==='posicion'?'on':''}" ${disabledCli?'disabled title="Sin cliente"':''}>Posición viva</button>
     <button data-tab="usuario" class="${d.tab==='usuario'?'on':''}">Operaciones del usuario</button>
     <span class="grow"></span>
     <button class="icon-btn" data-act="filters" title="Filtros" style="${d.filtersOn?'color:var(--accent)':''}">⚲</button>
