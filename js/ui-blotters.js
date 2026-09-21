@@ -146,7 +146,7 @@ function renderFilters(box, kind, rerender){
   });
   $('[data-clear]', box).onclick=()=>{ S.dock.filters={}; rerender(); };
 }
-function rowMenu(e, o, kind, perms, onAction){
+export function rowMenu(e, o, kind, perms, onAction){
   const items = [];
   const today = new Date().toISOString().slice(0,10);
   const isSC = /SEGURO DE CAMBIO/.test(o.tipoOp);
@@ -164,7 +164,7 @@ function rowMenu(e, o, kind, perms, onAction){
   items.push('-'); items.push({label:'Más info', onClick:()=>onAction('masInfo', o)});
   cmenu(e.clientX, e.clientY, items);
 }
-function renderPosicion(body){
+export function renderPosicion(body){
   // Posición viva = nominal pendiente de disponer de cada seguro (anticipos y cancelaciones ya descontados en `dispon`)
   const c = S.client; const list = C.ops.filter(o=>o.cliente===c.id && o.estado==='Ejecutada' && /^SEGURO DE CAMBIO/.test(o.tipoOp) && (o.dispon ?? o.nominal) > 0);
   if(!list.length){ body.innerHTML='<div class="empty">Sin posición viva en forwards.</div>'; return; }

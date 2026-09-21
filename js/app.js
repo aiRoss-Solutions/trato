@@ -9,6 +9,7 @@ import { mountDesk } from './ui-desk.js';
 import { mountBroker } from './ui-broker.js';
 
 const root = $('#root');
+S.theme = localStorage.getItem('trato.theme') || 'sala';   // v0.3: la mesa arranca en navy
 applyTheme(S.theme);
 PX.start();
 

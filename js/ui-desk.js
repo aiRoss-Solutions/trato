@@ -1,63 +1,97 @@
-// Trato · canales SALA / TEL: cabecera, cabecera pre-trade, workspaces, streaming, blotters, panel derecho
-import { $, $$, h, esc, fmtN, bigPx, toast, modal, parseAmount, cmenu, envLabel, sysClock } from './ui.js';
+// Trato · mesa (SALA / TEL) v0.3: cabecera global, dos filas (precios + paneles), actividad a la derecha, contexto de cliente abajo, ⌘K
+import { $, $$, h, esc, fmtN, bigPx, toast, modal, parseAmount, cmenu, envLabel, sysClock, stateChip } from './ui.js';
 import * as C from './core.js';
 import * as PX from './prices.js';
 import { S, resetTilesFromWorkspace } from './state.js';
 import { PAIRS, TENORS, FLAGS, BRAND, CLIENTS } from './data.js';
 import { label as gl, chip as gchip, t as gt, channel as gchan } from './glossary.js';
-import { renderDock } from './ui-blotters.js';
+import { renderDock, renderPosicion, rowMenu } from './ui-blotters.js';
 import { openTicket, openOrderBoleta, openAnticipo, openCancelacion, openCancelGenerica, masInfo } from './ui-ticket.js';
 
 let root, perms, unsubs = [];
 const q = s => $(s, root);
 
-let clockTimer=null;
+let clockTimer=null; let staleTimer=null;
 export function mountDesk(el, user, {onLogout, onToggleConsole, onTheme}){
   root = el; S.user = user; perms = user.perms; S.client = null; S.ctx = {cargo:null,abono:null,linea:null,ordenante:null};
+  S.act ??= { filter:'todas', scope:'cliente', table:false, collapsed:false }; S.ctxbar ??= { collapsed:false };
   resetTilesFromWorkspace();
   root.innerHTML = `
-    <div class="main">
+    <div class="main v3">
       <div class="topbar" data-topbar></div>
-      <div class="pretrade" data-pretrade></div>
-      <div class="center" data-center></div>
-      <div class="dock" data-dock></div>
+      <div class="work" data-work>
+        <div class="center" data-center>
+          <div class="row1" data-row1></div>
+          <div class="row2" data-panels></div>
+        </div>
+        <aside class="activity" data-activity></aside>
+      </div>
+      <div class="ctxbar" data-ctxbar></div>
     </div>
-    <div class="rpanel" data-rpanel></div>`;
-  renderTopbar(); renderPretrade(); renderCenter(); renderDockNow(); renderRPanel({onLogout,onToggleConsole,onTheme});
-  unsubs.forEach(f=>f()); unsubs = [ PX.subscribe(onTick), C.onOps(()=>{ renderDockNow(); renderPretrade(); }) ];
-  setInterval(paintStale, 1000);
+    <div class="rpanel" data-rpanel></div>
+    <div class="palette hide" data-palette></div>`;
+  cbsRef = {onLogout,onToggleConsole,onTheme};
+  renderTopbar(); renderCtxBar(); renderCenter(); renderPanels(); renderActivity(); renderRPanel(cbsRef);
+  unsubs.forEach(f=>f()); unsubs = [ PX.subscribe(onTick), C.onOps(()=>{ renderActivity(); renderPanels(); renderCtxBar(); }) ];
+  clearInterval(staleTimer); staleTimer = setInterval(()=>{ paintStale(); paintPlatform(); }, 1000);
+  document.removeEventListener('keydown', onGlobalKey); document.addEventListener('keydown', onGlobalKey);
+}
+let cbsRef = null;
+function onGlobalKey(e){
+  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); openPalette(); }
 }
 
-// ---------------- cabecera ----------------
+// ---------------- cabecera (solo lo global) ----------------
 function renderTopbar(){
-  const c = S.client, ctx = S.ctx;
-  const cliOpts = CLIENTS.map(x=>`<option value="${esc(x.nombre)}">${esc(x.nif)} · ${esc(x.nombre)}</option>`).join('') + (perms.generico ? `<option value="Cliente por asignar">Cliente por asignar</option>` : '');
-  const sel = (label, key, items, getL, getV) => `<div class="ctx"><label>${label}</label><select data-ctx="${key}" ${!c||c.generic?'disabled':''}>${items.length? items.map((it,i)=>`<option value="${i}" ${ctx[key]===it?'selected':''}>${esc(getL(it))}</option>`).join('') : '<option>—</option>'}</select></div>`;
   q('[data-topbar]').innerHTML = `
     <div class="brand"><div class="mark">T</div><b>${BRAND.name}</b></div>
-    <button class="modebtn ${S.mode==='FLEX'?'on':''}" data-mode><select data-modesel><option value="SPOTFWD" ${S.mode==='SPOTFWD'?'selected':''}>SPOT / FWD</option><option value="FLEX" ${S.mode==='FLEX'?'selected':''}>FWD FLEXIBLE</option></select></button>
-    <div class="cli"><label>Cliente</label><input list="cli-list" data-cli placeholder="Nombre o NIF…" value="${esc(c?.nombre||'')}"><datalist id="cli-list">${cliOpts}</datalist></div>
-    ${sel('Cuenta de cargo','cargo', c&&!c.generic? c.cuentas:[], x=>x.n)}
-    ${sel('Cuenta de abono','abono', c&&!c.generic? c.cuentas:[], x=>x.n)}
-    ${sel(gt('lineaRiesgo'),'linea', c&&!c.generic? c.lineas:[], x=>`${x.n} · ${x.div}`)}
-    ${sel('Ordenante','ordenante', c&&!c.generic? c.ordenantes:[], x=>`${x.nif} ${x.apoderado?'· apoderado':''}`)}
+    <button class="chip ws" data-ws title="Workspaces (plantillas de pares)">▦ ${esc(S.workspaces[S.activeWs].name)}</button>
+    <span class="seg mode"><button data-mode="SPOTFWD" class="${S.mode==='SPOTFWD'?'on':''}">Spot · Fwd</button><button data-mode="FLEX" class="${S.mode==='FLEX'?'on':''}">Flexible</button></span>
+    <button class="chip" data-rfs title="Órdenes limitadas y alertas">Órdenes</button>
+    <button class="chip" data-k title="Paleta de comandos (⌘K / Ctrl+K): cliente, par, acción">⌘K</button>
     <div class="tright">
-    <span class="sysclock mono" data-clock title="Fecha y hora del sistema"></span><span class="envchip ${envLabel().toLowerCase()}" title="Entorno">${envLabel()}</span>
-    <button class="chip" data-ws title="Workspaces">▦ ${esc(S.workspaces[S.activeWs].name)}</button>
-    <button class="modebtn" data-rfs title="Orden limitada · Alerta con llamada · Alerta de precio">Órdenes</button>
-    <span class="chip">${esc(S.user.nombre)} · <span class="mono">${esc(gchan(S.user.canal))}</span></span>
-    <button class="icon-btn" data-menu title="Menú">☰</button>
+      <span class="sysclock mono" data-clock title="Fecha y hora del sistema"></span><span class="envchip ${envLabel().toLowerCase()}" title="Entorno">${envLabel()}</span>
+      <span class="chip">${esc(S.user.nombre)} · <span class="mono">${esc(gchan(S.user.canal))}</span></span>
+      <button class="icon-btn" data-menu title="Menú">☰</button>
     </div>`;
   clearInterval(clockTimer); clockTimer = sysClock(q('[data-clock]'));
-  const cli = q('[data-cli]');
-  cli.onchange = e => selectClient(e.target.value);
-  cli.oninput = e => { const v=e.target.value.trim(); if(CLIENTS.some(x=>x.nombre===v || x.nif===v) || /^cliente gen[ée]rico$/i.test(v)) selectClient(v); };
-  cli.onkeydown = e => { if(e.key==='Enter'){ e.preventDefault(); selectClient(e.target.value); } };
-  $$('[data-ctx]', root).forEach(s=>s.onchange = ()=>{ const k=s.dataset.ctx; const list = k==='linea'? c.lineas : k==='ordenante'? c.ordenantes : c.cuentas; S.ctx[k] = list[+s.value]; renderPretrade(); C.log('core','contexto de operación', {[k]: S.ctx[k]?.n || S.ctx[k]?.nif}); });
-  q('[data-modesel]').onchange = e => { S.mode = e.target.value; renderTopbar(); renderCenter(); };
+  $$('[data-mode]',q('[data-topbar]')).forEach(b=>b.onclick=()=>{ S.mode=b.dataset.mode; renderTopbar(); renderCenter(); });
   q('[data-ws]').onclick = openWorkspaces;
-  q('[data-rfs]').onclick = ()=>openOrderBoleta({perms, onDone:renderDockNow});
+  q('[data-rfs]').onclick = ()=>openOrderBoleta({perms, onDone:renderActivity});
+  q('[data-k]').onclick = openPalette;
   q('[data-menu]').onclick = ()=>q('[data-rpanel]').classList.toggle('open');
+}
+
+// ---------------- barra inferior: cliente y contexto de operación ----------------
+function renderCtxBar(){
+  const c = S.client, ctx = S.ctx, g = !c || c.generic, bar = q('[data-ctxbar]'); if(!bar) return;
+  const cliOpts = CLIENTS.map(x=>`<option value="${esc(x.nombre)}">${esc(x.nif)} · ${esc(x.nombre)}</option>`).join('') + (perms.generico ? `<option value="Cliente por asignar">Cliente por asignar</option>` : '');
+  const sel = (label, key, items, getL) => `<div class="ctx"><label>${label}</label><select data-ctx="${key}" ${g?'disabled':''}>${items.length? items.map((it,i)=>`<option value="${i}" ${ctx[key]===it?'selected':''}>${esc(getL(it))}</option>`).join('') : '<option>—</option>'}</select></div>`;
+  const kv = (k,v) => `<div class="kv"><span>${k}</span><span>${v}</span></div>`;
+  const mifid = c && !g ? `<span class="dot ${c.mifid==='ok'?'ok':c.mifid==='warn'?'warn':'ko'}"></span> ${c.mifid==='ok'?'apto':c.mifid==='warn'?'revisar':'no apto'}` : '—';
+  const margen = c && !g ? (c.margenPersonalizado ? `personalizado (${fmtN(c.margenes.spot,2)}‰ / ${fmtN(c.margenes.fwd,2)}‰)` : fmtN(c.margenPorMil,2)+' ‰ · '+c.nivel) : '—';
+  bar.className = 'ctxbar' + (S.ctxbar.collapsed?' collapsed':'') + (g&&c?' generic':'');
+  bar.innerHTML = `
+    <div class="ctx-main">
+      <div class="cli"><label>Cliente</label><input list="cli-list" data-cli placeholder="Nombre o NIF… (⌘K)" value="${esc(c?.nombre||'')}"><datalist id="cli-list">${cliOpts}</datalist></div>
+      ${sel('Cuenta de cargo','cargo', c&&!g? c.cuentas:[], x=>x.n)}
+      ${sel('Cuenta de abono','abono', c&&!g? c.cuentas:[], x=>x.n)}
+      ${sel(gt('lineaRiesgo'),'linea', c&&!g? c.lineas:[], x=>`${x.n} · ${x.div}`)}
+      ${sel(gt('ordenante'),'ordenante', c&&!g? c.ordenantes:[], x=>`${x.nombre} ${x.apoderado?'· apoderado':''}`)}
+      <button class="icon-btn" data-fold title="${S.ctxbar.collapsed?'Mostrar datos del cliente':'Plegar'}">${S.ctxbar.collapsed?'▴':'▾'}</button>
+    </div>
+    <div class="ctx-kv">
+      ${kv(gt('idCliente'), g?'—':esc(c.id))}${kv(gt('gestor'), g?'—':esc(c.tutor))}${kv('MiFID', mifid)}${kv('Titular MiFID', g?'—':esc(c.titularMifid))}
+      ${kv('LEI', g?'—':(c.lei==='—'?'sin LEI':`<span class="mono">${esc(c.lei)}</span> · ${PX.es(c.leiRenov)}`))}${kv('Margen', margen)}
+      ${kv('Saldo cargo', g||!ctx.cargo?'—':fmtN(ctx.cargo.saldo,2)+' '+ctx.cargo.div)}${kv('Disponible línea FX', g||!ctx.linea?'—':fmtN(ctx.linea.disp,0)+' / '+fmtN(ctx.linea.limite,0)+' '+ctx.linea.div)}
+      ${kv('Contacto', g?'—':esc(c.email)+' · '+esc(c.tel))}
+    </div>`;
+  const cli = $('[data-cli]',bar);
+  cli.onchange = e => selectClient(e.target.value);
+  cli.oninput = e => { const v=e.target.value.trim(); if(CLIENTS.some(x=>x.nombre===v || x.nif===v) || /^cliente (gen[ée]rico|por asignar)$/i.test(v)) selectClient(v); };
+  cli.onkeydown = e => { if(e.key==='Enter'){ e.preventDefault(); selectClient(e.target.value); } };
+  $$('[data-ctx]', bar).forEach(sl=>sl.onchange = ()=>{ const k=sl.dataset.ctx; const list = k==='linea'? c.lineas : k==='ordenante'? c.ordenantes : c.cuentas; S.ctx[k] = list[+sl.value]; renderCtxBar(); C.log('core','contexto de operación', {[k]: S.ctx[k]?.n || S.ctx[k]?.nif}); });
+  $('[data-fold]',bar).onclick = ()=>{ S.ctxbar.collapsed=!S.ctxbar.collapsed; renderCtxBar(); };
 }
 function selectClient(val){
   val = (val||'').trim(); if(!val){ S.client=null; S.ctx={cargo:null,abono:null,linea:null,ordenante:null}; rerenderAll(); return; }
@@ -70,43 +104,29 @@ function selectClient(val){
   if(c.mifid==='ko') toast('Atención: cliente no apto MiFID. Las vistas de contratación quedan limitadas.','err');
   rerenderAll();
 }
-function rerenderAll(){ renderTopbar(); renderPretrade(); renderCenter(); renderDockNow(); }
-
-// ---------------- cabecera pre-trade ----------------
-function renderPretrade(){
-  const c = S.client; const g = !c || c.generic; const ctx = S.ctx;
-  const kv = (k,v) => `<div class="kv"><span>${k}</span><span>${v}</span></div>`;
-  const mifid = c && !g ? `<span class="dot ${c.mifid==='ok'?'ok':c.mifid==='warn'?'warn':'ko'}"></span>` : '—';
-  const margen = c && !g ? (c.margenPersonalizado ? `personalizado` : fmtN(c.margenPorMil,2)+' ‰') : '—';
-  q('[data-pretrade]').className = 'pretrade'+(g?' generic':'');
-  q('[data-pretrade]').innerHTML =
-    kv(gt('idCliente'), g?'—':esc(c.id)) + kv(gt('gestor'), g?'—':esc(c.tutor)) + kv('Saldo cuenta origen', g||!ctx.cargo?'—':fmtN(ctx.cargo.saldo,2)+' '+ctx.cargo.div) +
-    kv('Disponible línea FX', g||!ctx.linea?'—':fmtN(ctx.linea.disp,2)+' '+ctx.linea.div) + kv('Estado MiFID', mifid) + kv('Titular MiFID', g?'—':esc(c.titularMifid)) +
-    kv('Código LEI', g?'—':(c.lei==='—'?'Sin LEI':`<span class="mono">${esc(c.lei)}</span>`)) + kv('Fecha renovación LEI', g||c.leiRenov==='—'?'—':PX.es(c.leiRenov)) + kv('Email cliente', g?'—':esc(c.email)) +
-    kv('Teléfono', g?'—':esc(c.tel)) + kv('Ordenante', g||!ctx.ordenante?'—':esc(ctx.ordenante.nombre)+(ctx.ordenante.mifid==='ok'?' <span class="dot ok"></span>':' <span class="dot warn"></span>')) +
-    kv(c&&!g&&c.margenPersonalizado?'Margen personalizado':'Margen (‰)', c&&!g&&c.margenPersonalizado?'Sí':margen);
-}
+function rerenderAll(){ renderTopbar(); renderCtxBar(); renderCenter(); renderPanels(); renderActivity(); }
 
 // ---------------- centro: streaming ----------------
 function renderCenter(){
-  const center = q('[data-center]');
+  const center = q('[data-row1]');
   if(S.mode==='FLEX'){
     const t = S.flexTile ??= { pair:'EUR/USD', tipo:'OTROS', obs:'', divOp:'USD', amount:0, tenor:'3M', valueDate:PX.tenorDate('3M'), fdc:null };
     t.valueDate ??= PX.tenorDate(t.tenor); const fde = C.fdeFor(t.valueDate); t.fdc ??= fde;
     center.innerHTML = `<div class="notice" style="margin:0 0 12px">Seguro de cambio <b>flexible</b>: producto no estándar. La fecha de disponibilidad estándar (FDE) es el 20 % de los días naturales hasta vencimiento; el cliente elige desde qué fecha (FDC) podrá anticipar o cancelar.</div><div class="grid" data-grid></div>`;
     const grid = $('[data-grid]',center); grid.appendChild(renderTile(t, 0, true)); return;
   }
-  center.innerHTML = `<div class="grid" data-grid></div>`;
+  center.innerHTML = `<div class="r1-head"><span class="muted small">Precios · ${S.tiles.length} pares · streaming</span><span class="grow"></span><button class="chip" data-addpair title="Añadir par (o ⌘K y escribir el par)">+ par</button><button class="icon-btn xs" data-pop-precios title="Abrir precios en ventana">⧉</button></div><div class="grid" data-grid></div>`;
   const grid = $('[data-grid]', center);
   S.tiles.forEach((t,i)=>grid.appendChild(renderTile(t,i,false)));
-  const add = h(`<div class="tile add" title="Añadir par">+</div>`); add.onclick = ()=>pickPair(null); grid.appendChild(add);
+  $('[data-addpair]',center).onclick = ()=>pickPair(null);
+  $('[data-pop-precios]',center).onclick = ()=>popout('precios');
   onTick();
 }
 function renderTile(t, i, flex){
   const g = S.client?.generic; const [base, quote] = t.pair.split('/'); const oth = t.divOp===base?quote:base;
   const el = h(`<div class="tile" data-i="${i}">
     <div class="t-head"><span class="pair" data-pair title="Cambiar par">${FLAGS[base]||''} ${esc(t.pair)} ${FLAGS[quote]||''}</span>
-      <span class="seg"><button data-tipo="OTROS" class="${t.tipo==='OTROS'?'on':''}" title="Spot con liquidación externa y forwards">Spot · Fwd</button><button data-tipo="CONVERSION" class="${t.tipo==='CONVERSION'?'on':''}" ${g||flex?'disabled':''} title="Cambio entre cuentas del cliente: spot, hoy y mañana">Entre cuentas</button></span>
+      <span class="seg"><button data-tipo="OTROS" class="${t.tipo==='OTROS'?'on':''}" title="Spot con liquidación externa y forwards">Spot·Fwd</button><button data-tipo="CONVERSION" class="${t.tipo==='CONVERSION'?'on':''}" ${g||flex?'disabled':''} title="Cambio entre cuentas del cliente: spot, hoy y mañana">Ctas</button></span>
       <span class="grow" style="flex:1"></span>${flex?'':'<button class="icon-btn close" data-close>✕</button>'}</div>
     <div class="t-row obsrow"><span class="lbl">Obs.</span><input data-obs placeholder="${t.tipo==='OTROS'&&C.cfg.obsObligatorias?'Motivo / observaciones · obligatorio en spot con liquidación externa':'Observaciones (opcional)'}" value="${esc(t.obs)}"></div>
     <div class="prices">
@@ -126,10 +146,10 @@ function renderTile(t, i, flex){
   $('[data-date]',el).onchange = e=>{ const dt=new Date(e.target.value+'T12:00:00'); if(!PX.isBiz(dt)){ toast('Fecha no hábil. Se ajusta al siguiente día hábil.'); e.target.value=PX.iso(PX.addBiz(dt,1)); return $('[data-date]',el).onchange(e); } t.valueDate=dt; t.tenor=PX.tenorFor(dt); if(flex){ t.fdc=null; } renderCenter(); };
   $('[data-tenor]',el).onchange = e=>{ t.tenor=e.target.value; t.valueDate=PX.tenorDate(t.tenor); if(flex) t.fdc=null; renderCenter(); };
   $('[data-fdc]',el)?.addEventListener('change', e=>{ let x=new Date(e.target.value+'T12:00:00'); if(!PX.isBiz(x)){ x=PX.nextBiz(x); e.target.value=PX.iso(x); toast('Fecha de disponibilidad no hábil: se ajusta al siguiente día hábil.'); } t.fdc = x; });
-  $$('[data-side]',el).forEach(s=>s.onclick=()=>{ if(!S.client){ toast('Seleccione un cliente.','err'); $('[data-cli]').focus(); return; } if(!t.amount){ toast('Indique un importe antes de solicitar precio.','err'); amt.classList.add('req'); amt.focus(); return; }
+  $$('[data-side]',el).forEach(s=>s.onclick=()=>{ if(!S.client){ toast('Seleccione un cliente (⌘K o barra inferior).','err'); S.ctxbar.collapsed=false; renderCtxBar(); $('[data-cli]',root)?.focus(); return; } if(!t.amount){ toast('Indique un importe antes de solicitar precio.','err'); amt.classList.add('req'); amt.focus(); return; }
     const obsIn = $('[data-obs]',el); const esClave = t.tipo==='OTROS' && S.mode!=='FLEX' && PX.tenorFor(t.valueDate||PX.tenorDate(t.tenor))!=='FWD';
     if(C.cfg.obsObligatorias && esClave && !t.obs.trim()){ toast('Indique el motivo en «Observaciones»: obligatorio en spot con liquidación externa (trazabilidad). Se puede relajar en Menú → Demo.','err'); obsIn.classList.add('req'); obsIn.focus(); return; }
-    openTicket(el, t, s.dataset.side, { perms, onDone:()=>renderCenter() }); });
+    openTicket(el, t, s.dataset.side, { perms, onDone:()=>{ renderCenter(); renderActivity(); } }); });
   $$('[data-side]',el).forEach(sd=>sd.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); sd.click(); } }));
   $('[data-obs]',el).addEventListener('input', e=>e.target.classList.remove('req')); amt.addEventListener('input', ()=>amt.classList.remove('req'));
   return el;
@@ -173,16 +193,150 @@ function openWorkspaces(){
   $('[data-save]',body).onclick=()=>{ const n=$('[data-name]',body).value.trim(); if(!n){ toast('Indique un nombre.','err'); return; } S.workspaces.push({ name:n, pairs:S.tiles.map(t=>t.pair), fav:false }); $('[data-name]',body).value=''; paint(); toast('Workspace guardado','ok'); };
 }
 
-// ---------------- dock ----------------
-function renderDockNow(){
-  renderDock(q('[data-dock]'), { perms, onAction(action, op){
-    if(action==='anticipar') openAnticipo(op,{perms,onDone:renderDockNow});
-    else if(action==='cancelar') openCancelacion(op,{perms,onDone:renderDockNow});
-    else if(action==='cancelarOrden'){ C.cancelOrder(op); toast('Orden cancelada.','ok'); }
-    else if(action==='completarMarkup'){ C.completeMarkup(op).then(()=>toast('Margen confirmado. Operación enviada al core.','ok')); }
-    else if(action==='cancelarGenerica') openCancelGenerica(op,{onDone:renderDockNow});
-    else if(action==='masInfo') masInfo(op,{perms});
-  }});
+// ---------------- acciones sobre operaciones (compartidas por actividad, paneles y tabla) ----------------
+function onAction(action, op){
+  const done = ()=>{ renderActivity(); renderPanels(); renderCtxBar(); };
+  if(action==='anticipar') openAnticipo(op,{perms,onDone:done});
+  else if(action==='cancelar') openCancelacion(op,{perms,onDone:done});
+  else if(action==='cancelarOrden'){ C.cancelOrder(op); toast('Orden cancelada.','ok'); }
+  else if(action==='completarMarkup'){ C.completeMarkup(op).then(()=>toast('Margen confirmado. Operación enviada al core.','ok')); }
+  else if(action==='cancelarGenerica') openCancelGenerica(op,{onDone:done});
+  else if(action==='masInfo') masInfo(op,{perms});
+}
+function renderDockNow(){ renderActivity(); }
+const VIVAS = new Set(['Solicitud pendiente','Precio recibido','Validando operación','Ejecutando','Confirmada en mercado','Orden enviada a mercado','Precio alcanzado']);
+const ORDENES = new Set(['ORDEN LIMITADA','CALL ORDER','AVISO']);
+function actList(){
+  const a = S.act, c = S.client;
+  let list = C.ops.slice();
+  if(a.scope==='cliente') list = c ? list.filter(o=>o.cliente===c.id) : [];
+  else if(a.scope==='mios') list = list.filter(o=>o.usuario===S.user.user);
+  if(a.filter==='vivas') list = list.filter(o=>VIVAS.has(o.estado));
+  else if(a.filter==='ordenes') list = list.filter(o=>o.tipoOp==='ORDEN LIMITADA');
+  else if(a.filter==='alertas') list = list.filter(o=>o.tipoOp==='CALL ORDER'||o.tipoOp==='AVISO');
+  else if(a.filter==='forwards') list = list.filter(o=>o.tipoOrden==='FORWARD');
+  return list;
+}
+function opCard(o){
+  const d = PX.dec(o.par); const kind = ORDENES.has(o.tipoOp)?'ol':'ejecutadas';
+  const el = h(`<div class="opcard ${VIVAS.has(o.estado)?'viva':''}" tabindex="0" title="Clic: detalle · ⋯: acciones">
+    <div class="l1"><span class="pchip ${gchip(o.tipoOp).toLowerCase()}">${esc(gchip(o.tipoOp))}</span><b class="mono">${esc(o.ref||o.idGlobal)}</b><span class="par mono">${esc(o.par)}</span><span class="grow"></span>${stateChip(o.estado,C.STATES)}<button class="icon-btn xs" data-more title="Acciones">⋯</button></div>
+    <div class="l2"><span class="${o.dir==='COMPRAR'?'buy':'sell'}">${esc(o.dir)} ${esc(o.divOp)}</span> <b class="mono">${fmtN(o.nominal,0)}</b><span class="muted"> @ </span><b class="mono">${o.precioCliente!=null?fmtN(o.precioCliente,d):(o.precioLimite!=null?fmtN(o.precioLimite,d)+' lím.':'—')}</b><span class="grow"></span><span class="muted small">${esc(gl(o.tipoOp))} · ${PX.es(o.fechaValor)}${o.hora&&o.hora!=='—'?' · '+esc(o.hora):''}</span></div>
+    ${S.act.scope!=='cliente'?`<div class="l3 muted small">${esc(o.clienteNombre||C.clients().find(x=>x.id===o.cliente)?.nombre||o.cliente)}</div>`:''}
+  </div>`);
+  el.onclick = e=>{ if(e.target.closest('[data-more]')) return; onAction('masInfo', o); };
+  el.onkeydown = e=>{ if(e.key==='Enter') onAction('masInfo', o); };
+  el.oncontextmenu = e=>{ e.preventDefault(); rowMenu(e, o, kind, perms, onAction); };
+  $('[data-more]',el).onclick = e=>{ e.stopPropagation(); rowMenu(e, o, kind, perms, onAction); };
+  return el;
+}
+function renderActivity(){
+  const a = S.act, box = q('[data-activity]'); if(!box) return;
+  box.className = 'activity' + (a.collapsed?' collapsed':'');
+  if(a.collapsed){ box.innerHTML = `<button class="icon-btn" data-unfold title="Mostrar actividad">‹</button><div class="vlabel">${gt('actividad')}</div>`; $('[data-unfold]',box).onclick=()=>{ a.collapsed=false; renderActivity(); }; return; }
+  const list = actList();
+  box.innerHTML = `
+    <div class="a-head"><b>${gt('actividad')}</b><span class="count">${list.length}</span><span class="grow"></span>
+      <button class="icon-btn xs" data-table title="${a.table?'Ver como tarjetas':'Ver como tabla'}">${a.table?'▤':'☷'}</button>
+      <button class="icon-btn xs" data-pop title="Abrir en ventana">⧉</button>
+      <button class="icon-btn xs" data-fold title="Plegar">›</button></div>
+    <div class="a-filters">
+      <span class="seg sm"><button data-scope="cliente" class="${a.scope==='cliente'?'on':''}">Cliente</button><button data-scope="mios" class="${a.scope==='mios'?'on':''}">Mías</button><button data-scope="todas" class="${a.scope==='todas'?'on':''}">Mesa</button></span>
+      <span class="seg sm"><button data-f="todas" class="${a.filter==='todas'?'on':''}">Todas</button><button data-f="vivas" class="${a.filter==='vivas'?'on':''}">Vivas</button><button data-f="forwards" class="${a.filter==='forwards'?'on':''}">Fwd</button><button data-f="ordenes" class="${a.filter==='ordenes'?'on':''}">Órdenes</button><button data-f="alertas" class="${a.filter==='alertas'?'on':''}">Alertas</button></span>
+    </div>
+    <div class="a-body" data-abody></div>`;
+  const body = $('[data-abody]',box);
+  if(a.table){ body.classList.add('astable'); renderDock(body, {perms, onAction}); }
+  else if(!list.length){ body.innerHTML = `<div class="empty">${a.scope==='cliente'&&!S.client?'Seleccione un cliente para ver su actividad (⌘K).':'Sin operaciones que mostrar.'}</div>`; }
+  else list.forEach(o=>body.appendChild(opCard(o)));
+  $$('[data-scope]',box).forEach(b=>b.onclick=()=>{ a.scope=b.dataset.scope; renderActivity(); });
+  $$('[data-f]',box).forEach(b=>b.onclick=()=>{ a.filter=b.dataset.f; renderActivity(); });
+  $('[data-table]',box).onclick=()=>{ a.table=!a.table; renderActivity(); };
+  $('[data-fold]',box).onclick=()=>{ a.collapsed=true; renderActivity(); };
+  $('[data-pop]',box).onclick=()=>popout('actividad');
+}
+
+// ---------------- fila 2: paneles ----------------
+const PANELS = ['posicion','ordenes','plataforma','ultimas'];
+function panelCard(key){
+  const titles = { posicion:gt('posicionViva'), ordenes:gt('ordenesVivas'), plataforma:gt('estadoPlataforma'), ultimas:gt('ultimas') };
+  const el = h(`<div class="panel card" data-panel="${key}"><div class="c-h"><b>${titles[key]}</b><span class="grow"></span><button class="icon-btn xs" data-pop title="Abrir en ventana">⧉</button></div><div class="p-body" data-pbody></div></div>`);
+  $('[data-pop]',el).onclick=()=>popout(key);
+  return el;
+}
+export function paintPanel(key, body){
+  const c = S.client;
+  if(key==='posicion'){ if(!c){ body.innerHTML='<div class="empty">Sin cliente.</div>'; return; } renderPosicion(body); return; }
+  if(key==='ordenes'){
+    const list = C.ops.filter(o=>ORDENES.has(o.tipoOp) && (o.estado==='Orden enviada a mercado'||o.estado==='Precio alcanzado') && (!c || o.cliente===c.id));
+    if(!list.length){ body.innerHTML='<div class="empty">Sin órdenes ni alertas vivas.</div>'; return; }
+    body.innerHTML=''; list.forEach(o=>{ const d=PX.dec(o.par); const r=h(`<div class="orow"><span class="pchip ${gchip(o.tipoOp).toLowerCase()}">${esc(gchip(o.tipoOp))}</span><span class="mono">${esc(o.par)}</span><span class="${o.dir==='COMPRAR'?'buy':'sell'}">${esc(o.dir)} ${esc(o.divOp)} ${fmtN(o.nominal,0)}</span><span class="mono">lím. ${fmtN(o.precioLimite,d)}</span><span class="muted small">hasta ${PX.es(o.fechaValidez)}</span><span class="grow"></span><button class="btn btn-ghost btn-sm" data-c>Cancelar</button></div>`); $('[data-c]',r).onclick=()=>onAction('cancelarOrden',o); body.appendChild(r); });
+    return;
+  }
+  if(key==='plataforma'){
+    const s = PX.secondsSinceTick(); const okFeed = s<5;
+    body.innerHTML = `<div class="plat">
+      <div><span class="dot ${okFeed?'ok':'warn'}"></span> Proveedor de liquidez <b>${okFeed?'conectado':'sin precios '+s+' s'}</b></div>
+      <div><span class="dot ok"></span> Core bancario <b>conectado</b> · latencia <span class="mono">${fmtN(18+Math.round(Math.random()*7),0)} ms</span></div>
+      <div><span class="dot ${C.cfg.switchOn?'ok':'warn'}"></span> ${gt('cobertura')} <b>${C.cfg.switchOn?'ON · libros':'OFF · mercado'}</b></div>
+      <div><span class="dot ok"></span> Último tick <b class="mono" data-lasttick>${new Date().toLocaleTimeString('es-ES')}</b> · pares <b>${PAIRS.length}</b></div>
+      <div><span class="dot ${envLabel()==='PRO'?'ok':'warn'}"></span> Entorno <b>${envLabel()}</b> · ${esc(S.user.nombre)} · ${esc(gchan(S.user.canal))}</div>
+    </div>`; return;
+  }
+  if(key==='ultimas'){
+    const list = C.ops.filter(o=>o.estado==='Ejecutada' && (!c || o.cliente===c.id)).slice(0,5);
+    if(!list.length){ body.innerHTML='<div class="empty">Sin operaciones ejecutadas.</div>'; return; }
+    body.innerHTML=''; list.forEach(o=>{ const d=PX.dec(o.par); const r=h(`<div class="orow" tabindex="0"><span class="pchip ${gchip(o.tipoOp).toLowerCase()}">${esc(gchip(o.tipoOp))}</span><b class="mono">${esc(o.ref)}</b><span class="mono">${esc(o.par)}</span><span class="${o.dir==='COMPRAR'?'buy':'sell'}">${esc(o.dir)} ${esc(o.divOp)} ${fmtN(o.nominal,0)}</span><span class="mono">${fmtN(o.precioCliente,d)}</span><span class="grow"></span><span class="muted small">${PX.es(o.fechaValor)}</span></div>`); r.onclick=()=>onAction('masInfo',o); body.appendChild(r); });
+  }
+}
+function renderPanels(){
+  const box = q('[data-panels]'); if(!box) return;
+  if(!box.children.length) PANELS.forEach(k=>box.appendChild(panelCard(k)));
+  PANELS.forEach(k=>paintPanel(k, $(`[data-panel="${k}"] [data-pbody]`, box)));
+}
+function paintPlatform(){ const b = $('[data-panel="plataforma"] [data-pbody]', root); if(b) paintPanel('plataforma', b); }
+
+// ---------------- multiventana (bloque 6): por ahora abre la ruta del panel ----------------
+export function popout(panel){
+  const url = `./?panel=${encodeURIComponent(panel)}&ch=${encodeURIComponent(S.user.canal)}${S.client?'&cli='+encodeURIComponent(S.client.id):''}`;
+  const w = window.open(url, 'trato-'+panel, 'popup=yes,width=520,height=720');
+  if(!w){ modal({ title:'Ventana bloqueada por el navegador', width:460, body:`<div class="notice">El navegador ha bloqueado la ventana emergente. Permita ventanas para este sitio o ábrala a mano:</div><p style="margin-top:10px"><a class="btn btn-primary btn-sm" href="${url}" target="_blank" rel="opener">Abrir «${esc(panel)}» en una pestaña nueva</a></p>`, actions:[{label:'Cerrar',onClick:a=>a.close()}] }); return; }
+  C.log('core',`panel «${panel}» abierto en ventana propia`,{});
+}
+
+// ---------------- paleta de comandos ⌘K ----------------
+function openPalette(){
+  const p = q('[data-palette]'); if(!p) return;
+  p.classList.remove('hide');
+  p.innerHTML = `<div class="pal"><input data-pin placeholder="Cliente, NIF, par (EUR/USD) o acción…" autocomplete="off"><div class="pal-list" data-plist></div><div class="pal-foot muted small">↑↓ moverse · Enter ejecutar · Esc cerrar</div></div>`;
+  const inp = $('[data-pin]',p), list = $('[data-plist]',p); let items=[], idx=0;
+  const build = (qs)=>{
+    const s = qs.trim().toLowerCase(); items=[];
+    for(const c of CLIENTS){ if(!s || c.nombre.toLowerCase().includes(s) || c.nif.toLowerCase().includes(s) || c.id.includes(s)) items.push({k:'Cliente', l:c.nombre, d:c.nif, run:()=>selectClient(c.nombre)}); }
+    if(perms.generico && (!s || 'cliente por asignar'.includes(s))) items.push({k:'Cliente', l:'Cliente por asignar', d:'solo spot, sin margen', run:()=>selectClient('Cliente por asignar')});
+    for(const pr of PAIRS){ if(s && (pr.toLowerCase().includes(s) || pr.replace('/','').toLowerCase().includes(s))) items.push({k:'Par', l:pr, d:S.tiles.some(t=>t.pair===pr)?'ya en pantalla · enfocar':'añadir a la fila de precios', run:()=>{ if(!S.tiles.some(t=>t.pair===pr)) S.tiles.push({ pair:pr, tipo:'OTROS', obs:'', divOp:pr.split('/')[1], amount:0, tenor:'SPOT', valueDate:null }); renderCenter(); const i=S.tiles.findIndex(t=>t.pair===pr); $(`.tile[data-i="${i}"] [data-amt]`,root)?.focus(); }}); }
+    const acts = [
+      {l:'Órdenes y alertas', d:'boleta de orden limitada / alerta', run:()=>openOrderBoleta({perms,onDone:renderActivity})},
+      {l:'Workspaces', d:'plantillas de pares', run:openWorkspaces},
+      {l:'Seguro de cambio flexible', d:'modo flexible', run:()=>{ S.mode='FLEX'; renderTopbar(); renderCenter(); }},
+      {l:'Spot · Forward', d:'modo estándar', run:()=>{ S.mode='SPOTFWD'; renderTopbar(); renderCenter(); }},
+      {l:'Consola de integración', d:'lo que viaja al core', run:()=>cbsRef?.onToggleConsole()},
+      {l:'Tema claro', d:'', run:()=>cbsRef?.onTheme('light')}, {l:'Tema navy', d:'', run:()=>cbsRef?.onTheme('sala')},
+      {l:'Actividad en ventana', d:'abrir el panel de actividad aparte', run:()=>popout('actividad')},
+      {l:'Posición en ventana', d:'', run:()=>popout('posicion')},
+      {l:'Salir', d:'cerrar sesión', run:()=>cbsRef?.onLogout()},
+    ];
+    for(const a of acts){ if(!s || a.l.toLowerCase().includes(s) || a.d.toLowerCase().includes(s)) items.push({k:'Acción', ...a}); }
+    items = items.slice(0,12); idx=0; paint();
+  };
+  const paint = ()=>{ list.innerHTML = items.length? items.map((it,i)=>`<div class="pal-item ${i===idx?'on':''}" data-i="${i}"><span class="k">${it.k}</span><b>${esc(it.l)}</b><span class="muted small">${esc(it.d||'')}</span></div>`).join('') : '<div class="empty">Sin resultados.</div>';
+    $$('.pal-item',list).forEach(el=>el.onclick=()=>{ run(+el.dataset.i); }); };
+  const close = ()=>{ p.classList.add('hide'); p.innerHTML=''; };
+  const run = i => { const it=items[i]; close(); it?.run(); };
+  inp.oninput = ()=>build(inp.value);
+  inp.onkeydown = e=>{ if(e.key==='ArrowDown'){ idx=Math.min(items.length-1,idx+1); paint(); e.preventDefault(); } else if(e.key==='ArrowUp'){ idx=Math.max(0,idx-1); paint(); e.preventDefault(); } else if(e.key==='Enter'||e.key==='Return'||e.keyCode===13){ e.preventDefault(); run(idx); } else if(e.key==='Escape'){ close(); } };
+  p.onmousedown = e=>{ if(e.target===p) close(); };
+  build(''); inp.focus();
 }
 
 // ---------------- panel derecho ----------------
@@ -191,10 +345,10 @@ function renderRPanel({onLogout,onToggleConsole,onTheme}){
   p.innerHTML = `<div class="p-head">${esc(BRAND.name)} <span class="muted small" style="font-weight:400">· ${esc(S.user.desc)}</span><span style="flex:1"></span><button class="icon-btn" data-x>✕</button></div>
     <div class="p-body">
       <div class="sect">Operativa</div>
-      <button class="item" data-go="SPOTFWD">Spot / Forward</button><button class="item" data-go="FLEX">Seguro de cambio flexible</button><button class="item" data-go="RFS">Orden limitada · Call order · Aviso</button>
+      <button class="item" data-go="SPOTFWD">Spot / Forward</button><button class="item" data-go="FLEX">Seguro de cambio flexible</button><button class="item" data-go="RFS">Órdenes y alertas</button>
       <div class="sect">Vista</div>
-      <button class="item" data-go="WS">Workspaces</button><button class="item" data-go="DOCK">Plegar / desplegar blotter</button>
-      <div class="row"><span>Tema</span><span class="seg"><button data-theme="light" class="${S.theme==='light'?'on':''}">Claro</button><button data-theme="sala" class="${S.theme==='sala'?'on':''}">Sala</button></span></div>
+      <button class="item" data-go="WS">Workspaces</button><button class="item" data-go="ACT">Plegar / desplegar actividad</button><button class="item" data-go="CTX">Plegar / desplegar contexto de cliente</button><button class="item" data-go="K">Paleta de comandos ⌘K</button>
+      <div class="row"><span>Tema</span><span class="seg"><button data-theme="light" class="${S.theme==='light'?'on':''}">Claro</button><button data-theme="sala" class="${S.theme==='sala'?'on':''}">Navy</button></span></div>
       <div class="row"><span>Idioma</span><span class="seg"><button class="on">ES</button><button disabled title="Pendiente">EN</button></span></div>
       <div class="sect">Integración (demo)</div>
       <button class="item" data-go="CONSOLE">Consola de integración</button>
@@ -206,8 +360,8 @@ function renderRPanel({onLogout,onToggleConsole,onTheme}){
     </div><div class="p-foot">${esc(BRAND.name)} v${BRAND.version} · prototipo navegable · sin conexión real</div>`;
   $('[data-x]',p).onclick=()=>p.classList.remove('open');
   $$('[data-go]',p).forEach(b=>b.onclick=()=>{ const g=b.dataset.go; p.classList.remove('open');
-    if(g==='SPOTFWD'||g==='FLEX'){ S.mode=g; renderTopbar(); renderCenter(); } else if(g==='RFS') openOrderBoleta({perms,onDone:renderDockNow}); else if(g==='WS') openWorkspaces();
-    else if(g==='DOCK'){ const cur=getComputedStyle(document.documentElement).getPropertyValue('--dock-h').trim(); document.documentElement.style.setProperty('--dock-h', cur==='42px'?'300px':'42px'); }
+    if(g==='SPOTFWD'||g==='FLEX'){ S.mode=g; renderTopbar(); renderCenter(); } else if(g==='RFS') openOrderBoleta({perms,onDone:renderActivity}); else if(g==='WS') openWorkspaces();
+    else if(g==='ACT'){ S.act.collapsed=!S.act.collapsed; renderActivity(); } else if(g==='CTX'){ S.ctxbar.collapsed=!S.ctxbar.collapsed; renderCtxBar(); } else if(g==='K') openPalette();
     else if(g==='CONSOLE') onToggleConsole(); else if(g==='LOGOUT') onLogout(); });
   $$('[data-theme]',p).forEach(b=>b.onclick=()=>{ onTheme(b.dataset.theme); renderRPanel({onLogout,onToggleConsole,onTheme}); });
   $('[data-rechazos]',p).onclick=()=>{ C.cfg.rechazosAleatorios=!C.cfg.rechazosAleatorios; C.log('core',`Rechazos aleatorios ${C.cfg.rechazosAleatorios?'ON':'OFF'}`,{}); renderRPanel({onLogout,onToggleConsole,onTheme}); p.classList.add('open'); };
