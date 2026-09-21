@@ -7,6 +7,7 @@ import { PAIRS, TENORS, FLAGS, BRAND, CLIENTS } from './data.js';
 import { label as gl, chip as gchip, t as gt, channel as gchan } from './glossary.js';
 import { renderDock, renderPosicion, rowMenu } from './ui-blotters.js';
 import * as SYNC from './sync.js';
+import { ask as askAssistant } from './asistente.js';
 import { openTicket, openOrderBoleta, openAnticipo, openCancelacion, openCancelGenerica, masInfo } from './ui-ticket.js';
 
 let root, perms, unsubs = [];
@@ -33,7 +34,7 @@ export function mountDesk(el, user, {onLogout, onToggleConsole, onTheme}){
     <div class="palette hide" data-palette></div>`;
   cbsRef = {onLogout,onToggleConsole,onTheme};
   renderTopbar(); renderCtxBar(); renderCenter(); renderPanels(); renderActivity(); renderRPanel(cbsRef);
-  unsubs.forEach(f=>f()); unsubs = [ PX.subscribe(onTick), C.onOps(()=>{ renderActivity(); renderPanels(); renderCtxBar(); }) ];
+  unsubs.forEach(f=>f()); unsubs = [ PX.subscribe(onTick), C.onOps(()=>{ renderActivity(); renderPanels(); renderCtxBar(); }), PX.onProvider(()=>{ renderActivity(); renderPanels(); onTick(); }) ];
   clearInterval(staleTimer); staleTimer = setInterval(()=>{ paintStale(); paintPlatform(); }, 1000);
   document.removeEventListener('keydown', onGlobalKey); document.addEventListener('keydown', onGlobalKey);
   panelMode = null; syncUnsub.forEach(f=>f()); syncUnsub = [ SYNC.on('hello-ctx', ()=>broadcastCtx()), SYNC.on('ctx', p=>{ applyCtx(p); rerenderAll(); }) ];
@@ -152,7 +153,7 @@ export function mountPanel(el, user, panel){
     else { if(!$('[data-panel]',body)){ body.innerHTML=''; const card=panelCard(panel); $('[data-pop]',card)?.remove(); body.appendChild(card); } paintPanel(panel, $('[data-pbody]',body)); }
   };
   paint();
-  unsubs.forEach(f=>f()); unsubs = [ C.onOps(paint), SYNC.on('ctx', p=>{ applyCtx(p); paint(); }) ];
+  unsubs.forEach(f=>f()); unsubs = [ C.onOps(paint), SYNC.on('ctx', p=>{ applyCtx(p); paint(); }), PX.onProvider(()=>paint()) ];
   if(panel==='precios') unsubs.push(PX.subscribe(onTick));
   clearInterval(staleTimer); staleTimer = setInterval(()=>{ paintStale(); if(panel==='plataforma') paint(); }, 1000);
   window.addEventListener('beforeunload', ()=>SYNC.send('panel-closed',{panel}));
@@ -185,8 +186,8 @@ function renderTile(t, i, flex){
       <span class="grow" style="flex:1"></span>${flex?'':'<button class="icon-btn close" data-close>✕</button>'}</div>
     <div class="t-row obsrow"><span class="lbl">Obs.</span><input data-obs placeholder="${t.tipo==='OTROS'&&C.cfg.obsObligatorias?'Motivo / observaciones · obligatorio en spot con liquidación externa':'Observaciones (opcional)'}" value="${esc(t.obs)}"></div>
     <div class="prices">
-      <div class="side" data-side="COMPRAR" role="button" tabindex="0" aria-label="Comprar ${esc(t.divOp)}: solicitar precio"><div class="lbl"><b>COMPRAR ${esc(t.divOp)}</b><span>▾</span></div><div class="px" data-px="COMPRAR">—</div></div>
-      <div class="side" data-side="VENDER" role="button" tabindex="0" aria-label="Vender ${esc(t.divOp)}: solicitar precio"><div class="lbl"><b>VENDER ${esc(t.divOp)}</b><span>▾</span></div><div class="px" data-px="VENDER">—</div></div>
+      <div class="side" data-side="COMPRAR" role="button" tabindex="0" aria-label="Comprar ${esc(t.divOp)}: solicitar precio"><div class="lbl"><b>COMPRAR ${esc(t.divOp)}</b><span class="lpsrc mono" data-lp="COMPRAR" title="Proveedor que da este lado"></span></div><div class="px" data-px="COMPRAR">—</div></div>
+      <div class="side" data-side="VENDER" role="button" tabindex="0" aria-label="Vender ${esc(t.divOp)}: solicitar precio"><div class="lbl"><b>VENDER ${esc(t.divOp)}</b><span class="lpsrc mono" data-lp="VENDER" title="Proveedor que da este lado"></span></div><div class="px" data-px="VENDER">—</div></div>
     </div>
     <div class="t-row"><button class="swap" data-swap title="Operar en ${esc(oth)}">⇄ ${esc(t.divOp)}</button><input class="amt" data-amt placeholder="0 · 30K · 6M" value="${t.amount?fmtN(t.amount,0):''}"></div>
     ${flex?`<div class="t-row"><span class="tiny muted">FDE</span><span class="mono small" data-fde>${PX.es(C.fdeFor(t.valueDate))}</span><span class="tiny muted" style="margin-left:10px">FDC</span><input type="date" data-fdc value="${PX.iso(t.fdc)}" min="${PX.iso(C.fdeFor(t.valueDate))}" max="${PX.iso(t.valueDate)}" style="height:24px;padding:0 6px"></div>`:''}
@@ -229,6 +230,7 @@ function onTick(){
       const b = C.buildPrice({ pair:t.pair, dir, divOp:t.divOp, pt, valueDate: kind==='fwd'? vd : null, marginPorMil:m });
       const k = t.pair+dir+i; const node = $(`[data-px="${dir}"]`, el); const v = b.precioFinal;
       node.innerHTML = bigPx(v, d); node.className = 'px ' + (prev[k]===undefined ? '' : v>prev[k] ? 'up' : v<prev[k] ? 'down' : ''); prev[k]=v;
+      const lp = $(`[data-lp="${dir}"]`, el); if(lp && pt.src){ lp.textContent = 'LP·' + (b.clientBuysBase ? pt.src.ask : pt.src.bid); }
     }
   });
 }
@@ -290,7 +292,11 @@ function renderActivity(){
   box.className = 'activity' + (a.collapsed?' collapsed':'');
   if(a.collapsed){ box.innerHTML = `<button class="icon-btn" data-unfold title="Mostrar actividad">‹</button><div class="vlabel">${gt('actividad')}</div>`; $('[data-unfold]',box).onclick=()=>{ a.collapsed=false; renderActivity(); }; return; }
   const list = actList();
+  const prov = PX.getProvider();
   box.innerHTML = `
+    <div class="liq"><div class="liq-h"><b>Liquidez</b><span class="muted small">proveedor de precios</span><span class="grow"></span><span class="lp-now mono">${esc(PX.providerName())}</span></div>
+      <span class="seg sm liq-seg"><button data-lp="BEST" class="${prov==='BEST'?'on':''}" title="Por cada lado, el proveedor más barato">Mejor precio</button>${PX.PROVIDERS.map(p=>`<button data-lp="${p.id}" class="${prov===p.id?'on':''}" title="${esc(p.name)}">${esc(p.short)}</button>`).join('')}</span>
+    </div>
     <div class="a-head"><b>${gt('actividad')}</b><span class="count">${list.length}</span><span class="grow"></span>
       <button class="icon-btn xs" data-table title="${a.table?'Ver como tarjetas':'Ver como tabla'}">${a.table?'▤':'☷'}</button>
       <button class="icon-btn xs" data-pop title="Abrir en ventana">⧉</button>
@@ -299,8 +305,13 @@ function renderActivity(){
       <span class="seg sm"><button data-scope="cliente" class="${a.scope==='cliente'?'on':''}">Cliente</button><button data-scope="mios" class="${a.scope==='mios'?'on':''}">Mías</button><button data-scope="todas" class="${a.scope==='todas'?'on':''}">Mesa</button></span>
       <span class="seg sm"><button data-f="todas" class="${a.filter==='todas'?'on':''}">Todas</button><button data-f="vivas" class="${a.filter==='vivas'?'on':''}">Vivas</button><button data-f="forwards" class="${a.filter==='forwards'?'on':''}">Fwd</button><button data-f="ordenes" class="${a.filter==='ordenes'?'on':''}">Órdenes</button><button data-f="alertas" class="${a.filter==='alertas'?'on':''}">Alertas</button></span>
     </div>
-    <div class="a-body" data-abody></div>`;
+    <div class="a-body" data-abody></div>
+    <div class="asst" data-asst><div class="asst-h"><b>Asistente de mesa</b><span class="pchip nuevo">NUEVO</span><span class="grow"></span><span class="muted small" title="Demo local con reglas sobre los datos de la pantalla. En producción: LLM corporativo del banco.">demo</span></div>
+      <div class="asst-out" data-aout>${S.asstLast?esc(S.asstLast):'Preguntá por posición, operaciones, precios («EUR/USD 3M»), línea o un término.'}</div>
+      <form class="asst-in" data-aform><input data-ain placeholder="Preguntar al asistente…" autocomplete="off"><button class="btn btn-primary btn-sm" type="submit">↵</button></form></div>`;
   const body = $('[data-abody]',box);
+  $$('[data-lp]',box).forEach(b=>b.onclick=()=>{ PX.setProvider(b.dataset.lp); C.log('fix',`proveedor de liquidez: ${PX.providerName()}`,{}); toast(`Precios desde: ${PX.providerName()}`); renderActivity(); onTick(); });
+  $('[data-aform]',box).onsubmit = e=>{ e.preventDefault(); const qn=$('[data-ain]',box).value.trim(); if(!qn) return; const a = askAssistant(qn); S.asstLast = a; $('[data-aout]',box).textContent = a; $('[data-ain]',box).value=''; C.log('core','asistente de mesa (demo)',{pregunta:qn}); };
   if(a.table){ body.classList.add('astable'); renderDock(body, {perms, onAction}); }
   else if(!list.length){ body.innerHTML = `<div class="empty">${a.scope==='cliente'&&!S.client?'Seleccione un cliente para ver su actividad (⌘K).':'Sin operaciones que mostrar.'}</div>`; }
   else list.forEach(o=>body.appendChild(opCard(o)));
@@ -331,7 +342,7 @@ export function paintPanel(key, body){
   if(key==='plataforma'){
     const s = PX.secondsSinceTick(); const okFeed = s<5;
     body.innerHTML = `<div class="plat">
-      <div><span class="dot ${okFeed?'ok':'warn'}"></span> Proveedor de liquidez <b>${okFeed?'conectado':'sin precios '+s+' s'}</b></div>
+      <div><span class="dot ${okFeed?'ok':'warn'}"></span> Liquidez: <b>${PX.PROVIDERS.map(p=>p.short).join(' · ')}</b> ${okFeed?'conectados':'sin precios '+s+' s'} · activo <b>${esc(PX.providerName())}</b></div>
       <div><span class="dot ok"></span> Core bancario <b>conectado</b> · latencia <span class="mono">${fmtN(18+Math.round(Math.random()*7),0)} ms</span></div>
       <div><span class="dot ${C.cfg.switchOn?'ok':'warn'}"></span> ${gt('cobertura')} <b>${C.cfg.switchOn?'ON · libros':'OFF · mercado'}</b></div>
       <div><span class="dot ok"></span> Último tick <b class="mono" data-lasttick>${new Date().toLocaleTimeString('es-ES')}</b> · pares <b>${PAIRS.length}</b></div>

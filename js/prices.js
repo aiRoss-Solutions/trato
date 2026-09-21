@@ -1,6 +1,7 @@
 // Trato · motor de precios simulado. Hace el papel del proveedor de liquidez (plataforma multibanco):
 // streaming indicativo (SEP), precio ejecutable bajo petición (RFS) y puntos forward por tenor.
 import { RATES, PAIRS, TENORS, HOLIDAYS } from './data.js';
+import * as SYNC from './sync.js';
 
 const state = {};           // par -> {mid, prevBid, prevAsk}
 const subs = new Set();
@@ -14,10 +15,29 @@ export function pip(pair){ const d = RATES[pair].dec; return Math.pow(10, -d); }
 export function fmt(pair, v){ return v.toFixed(RATES[pair].dec); }
 export function dec(pair){ return RATES[pair].dec; }
 
-// Precio de trading (PT): mid ± medio spread de trading. Es lo que "vendría del proveedor".
+// ---------- proveedores de liquidez (multi-proveedor simulado) ----------
+// Cada proveedor cotiza el mismo mid con su propio sesgo (en pips) y su propio ancho de spread. "BEST" elige por lado el mejor.
+export const PROVIDERS = [
+  { id:'LPA', name:'Proveedor A', short:'A', skew:+0.10, spreadMult:1.00 },
+  { id:'LPB', name:'Proveedor B', short:'B', skew:-0.05, spreadMult:0.90 },
+  { id:'LPC', name:'Proveedor C', short:'C', skew:+0.00, spreadMult:1.15 },
+];
+let provider = 'BEST';
+const provSubs = new Set();
+export function getProvider(){ return provider; }
+export function providerName(id=provider){ return id==='BEST' ? 'Mejor precio' : (PROVIDERS.find(p=>p.id===id)?.name || id); }
+export function setProvider(id, {silent=false}={}){ provider = (id==='BEST' || PROVIDERS.some(p=>p.id===id)) ? id : 'BEST'; for(const f of provSubs) f(provider); if(!silent) SYNC.send('provider', provider); }
+export function onProvider(f){ provSubs.add(f); return ()=>provSubs.delete(f); }
+SYNC.on('provider', id=>setProvider(id, {silent:true}));
+function quoteOf(pair, p){ const s = state[pair]; const half = RATES[pair].spread * p.spreadMult * pip(pair) / 2; const mid = s.mid + p.skew*pip(pair); return { bid: mid-half, ask: mid+half, mid, id:p.id, short:p.short }; }
+export function quotes(pair){ return PROVIDERS.map(p=>quoteOf(pair,p)); }
+
+// Precio de trading (PT): lo que "viene del proveedor" seleccionado; con "Mejor precio", el mejor bid y el mejor ask entre todos.
 export function tradingPrice(pair){
-  const s = state[pair]; const half = RATES[pair].spread * pip(pair) / 2;
-  return { bid: s.mid - half, ask: s.mid + half, mid: s.mid };
+  const qs = quotes(pair);
+  if(provider!=='BEST'){ const q = qs.find(x=>x.id===provider) || qs[0]; return { bid:q.bid, ask:q.ask, mid:q.mid, src:{bid:q.short, ask:q.short} }; }
+  const b = qs.reduce((a,x)=>x.bid>a.bid?x:a), k = qs.reduce((a,x)=>x.ask<a.ask?x:a);
+  return { bid:b.bid, ask:k.ask, mid:state[pair].mid, src:{bid:b.short, ask:k.short} };
 }
 
 // Puntos forward para una fecha valor (en unidades de precio), aprox lineal por días.

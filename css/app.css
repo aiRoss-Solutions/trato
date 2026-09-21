@@ -551,3 +551,23 @@ html.is-panel,html.is-panel body{height:100%;overflow:hidden}
 .main.v3 .tile .foot input[type=date],.main.v3 .tile .foot select{height:17px;font-size:10px}
 @media (max-width:1500px){ .row2 .panel.card{height:170px} }
 .panel .p-body table.bl th,.panel .p-body table.bl td{padding:3px 8px}
+/* v0.3 · Liquidez (arriba de Actividad) y Asistente de mesa (abajo) */
+.liq{padding:8px 10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.liq-h{display:flex;align-items:center;gap:8px}
+.liq-h b{font-size:12.5px}.liq-h .grow{flex:1}
+.liq .lp-now{font-size:10.5px;color:var(--market);font-weight:700}
+.liq-seg button{flex:1}
+.asst{border-top:1px solid var(--line);padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--bg-panel)}
+.asst-h{display:flex;align-items:center;gap:8px}.asst-h b{font-size:12px}.asst-h .grow{flex:1}
+.pchip.nuevo{color:#fff;background:var(--accent);border-color:var(--accent)}
+.asst-out{font-size:11.5px;line-height:1.45;color:var(--ink-2);max-height:96px;overflow:auto;padding:6px 8px;border-radius:6px;background:var(--bg-soft)}
+.asst-in{display:flex;gap:6px}.asst-in input{flex:1;height:28px;font-size:12px}.asst-in .btn{height:28px;padding:0 10px}
+.tile .lpsrc{font-size:9px;color:var(--market);letter-spacing:.5px}
+:root:not([data-theme="sala"]) .main.v3 .activity .liq{border-bottom-color:var(--celeste-line)}
+:root:not([data-theme="sala"]) .main.v3 .activity .liq-seg{background:#fff}
+:root:not([data-theme="sala"]) .main.v3 .activity .asst{border-top-color:var(--celeste-line);background:var(--celeste)}
+:root:not([data-theme="sala"]) .main.v3 .activity .asst-out{background:#fff}
+@media (max-width:1500px){ .row2 .panel.card{height:150px} }
+.main.v3 .tile .side .lbl{white-space:nowrap;gap:4px}
+.main.v3 .tile .side .lbl b{font-size:9.5px;overflow:hidden;text-overflow:ellipsis}
+.main.v3 .tile .lpsrc{font-size:8.5px;flex-shrink:0}

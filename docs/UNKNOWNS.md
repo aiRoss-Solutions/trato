@@ -22,3 +22,5 @@ Registro de incógnitas: qué no sabíamos, qué default se aplicó y si Maxi lo
 | 16 | Paneles de la fila 2 reordenables por arrastre (#3) | No en v0.3.0: orden fijo posición · órdenes · plataforma · últimas | pendiente |
 | 17 | Altura de tile compacto | 202 px a 1440 (objetivo ≤ 170): las dos filas caben sin scroll, se deja así | default aplicado |
 | 18 | Capturas `docs/capturas/v0.3/` | El navegador integrado no guarda ficheros: Maxi o su Claude en escritorio las hacen | pendiente |
+| 19 | Asistente de mesa: ¿reglas locales o LLM real? | Demo con reglas sobre datos locales, chip NUEVO y etiqueta «demo»; en producción, LLM corporativo del banco en su tenant | default · Maxi pidió el hueco 21-sep |
+| 20 | Proveedores de liquidez: nombres y número | Tres genéricos (A/B/C) con sesgo y spread propios; «Mejor precio» por lado | default · Maxi pidió el selector 21-sep |

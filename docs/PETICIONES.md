@@ -34,8 +34,8 @@ Fuente: `2Trade-Trato/contexto/2026-09-20-camilo-Review-Trato-v0.1/` y `peticion
 | P-011 | Boleta: beneficio, botones, observaciones, importes | heredado | ✅ v0.2 |
 | P-012 | Tope al mark-up manual y aviso fuera de mercado | **nuevo aiRoss** | ⏸ aparcada (decisión Maxi 20-sep) |
 | P-013 | Trazabilidad de cotizaciones no cerradas | **nuevo aiRoss** | ⏸ aparcada |
-| P-014 | Multibanco: varios proveedores y mejor precio | **nuevo aiRoss** | ⏸ aparcada |
-| P-015 | Explicación del precio en una frase | **nuevo aiRoss** | ⏸ aparcada |
+| P-014 | Multibanco: varios proveedores y mejor precio | **nuevo aiRoss** | ◐ v0.3: selector de liquidez (A/B/C/mejor precio) en la columna de Actividad, por pedido de Maxi 21-sep; falta trazabilidad de qué proveedor ganó cada operación en el detalle |
+| P-015 | Explicación del precio en una frase | **nuevo aiRoss** | ◐ v0.3: el *Asistente de mesa* (demo, chip NUEVO) explica precio, posición y glosario a demanda; la frase automática dentro del ticket sigue aparcada |
 | P-016 | Accesibilidad básica | propuesta | ◐ v0.2 parcial (teclado en lados, Escape/foco en modales, aria-live); falta contraste de `ink-3`/`warn` y flechas de dirección |
 | P-017 | Presentación y datos | pulido | ✅ v0.2 |
 | P-018 | Higiene de código | higiene | ◐ v0.2 (saldo, rechazos como switch); pendiente: RFS huérfanos al re-renderizar tiles, estados muertos |

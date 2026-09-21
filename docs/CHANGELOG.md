@@ -19,6 +19,16 @@ Decisión de Maxi (21-sep): Trato debe parecer el destilado de varios proyectos 
   plataforma|ultimas|precios|consola` abre un panel en ventana propia con cabecera, reloj y entorno; se sincronizan
   operaciones, líneas, configuración, cliente y contexto, modo y tema; una hija puede ejecutar (rango propio de idGlobal y
   referencias); la consola en ventana recibe los eventos de la mesa; aviso con enlace si el navegador bloquea la ventana.
+- **Liquidez multi-proveedor** (pedido de Maxi 21-sep): bloque *Liquidez* arriba de la columna de Actividad con **Mejor precio /
+  Proveedor A / B / C** (tres proveedores simulados con sesgo y ancho de spread propios; «Mejor precio» toma por cada lado el más
+  barato). Los tiles muestran el proveedor que da cada lado (`LP·B`), el ticket y la boleta cotizan con el proveedor activo, la
+  elección se sincroniza entre ventanas y aparece en *Estado de la plataforma*.
+- **Asistente de mesa (chip NUEVO, demo)** abajo de la columna de Actividad: responde con reglas sobre los datos de la pantalla
+  (posición viva, última operación, número de operaciones, precio «EUR/USD 3M», línea de riesgo, proveedor, glosario). Es el hueco
+  donde en producción iría el LLM corporativo del banco; sin conexión a ningún modelo.
+- **Tema claro equilibrado por defecto**: cabecera navy · tiles blancos con borde navy arriba sobre fondo blanco · Actividad en
+  celeste · barra inferior en escala de navys. El todo-navy queda como opción. Fila 2 con altura fija (sin superposición al hacer
+  scroll) y tiles más bajos para que las dos filas quepan a 1440×900.
 - **Bloque 7 · disposición recordada**: se guarda por usuario qué paneles están en ventana; al entrar se ofrece *Restaurar
   disposición*; sección *Ventanas* en el menú.
 - Sin cambios en `core.js` salvo sincronización: toda la lógica de negocio de v0.2.1 se mantiene.
