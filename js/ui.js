@@ -34,6 +34,7 @@ export function envLabel(){
   const h=location.hostname, p=location.pathname;
   if(h==='localhost'||h==='127.0.0.1') return 'LOCAL';
   if(/\/uat\//.test(p)) return 'UAT';
+  if(/\/v3\//.test(p)) return 'V3';
   return 'PRO';
 }
 export function sysClock(el){
