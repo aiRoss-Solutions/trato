@@ -539,3 +539,15 @@ html.is-panel,html.is-panel body{height:100%;overflow:hidden}
 :root:not([data-theme="sala"]) .main.v3 .topbar .icon-btn{color:#BFD6FF}
 :root:not([data-theme="sala"]) .main.v3 .topbar .icon-btn:hover{background:rgba(255,255,255,.1);color:#fff}
 :root:not([data-theme="sala"]) .main.v3 .topbar .chip .mono{color:#BFD6FF}
+/* v0.3 · encaje a 1440×900: tiles más bajos y paneles de la fila 2 a 170 px cuando van en 2×2 */
+.main.v3 .tile .t-head{padding:3px 6px}
+.main.v3 .tile .obsrow{padding:1px 8px}
+.main.v3 .tile .obsrow input{height:17px}
+.main.v3 .tile .side{padding:4px 8px}
+.main.v3 .tile .px{margin-top:1px}
+.main.v3 .tile .t-row{padding:2px 8px}
+.main.v3 .tile .amt{height:21px}
+.main.v3 .tile .foot>div{padding:2px 6px}
+.main.v3 .tile .foot input[type=date],.main.v3 .tile .foot select{height:17px;font-size:10px}
+@media (max-width:1500px){ .row2 .panel.card{height:170px} }
+.panel .p-body table.bl th,.panel .p-body table.bl td{padding:3px 8px}
