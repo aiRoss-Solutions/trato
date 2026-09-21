@@ -29,6 +29,18 @@ export function toast(msg, type=''){
   setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 4200);
 }
 
+// ---------- entorno y reloj del sistema (los traders miran la fecha para saber si están en PRO o en pruebas) ----------
+export function envLabel(){
+  const h=location.hostname, p=location.pathname;
+  if(h==='localhost'||h==='127.0.0.1') return 'LOCAL';
+  if(/\/uat\//.test(p)) return 'UAT';
+  return 'PRO';
+}
+export function sysClock(el){
+  const paint=()=>{ const d=new Date(); el.textContent = d.toLocaleDateString('es-ES',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'}).replace('.', '') + ' · ' + d.toLocaleTimeString('es-ES'); };
+  paint(); return setInterval(paint, 1000);
+}
+
 // ---------- modal ----------
 export function modal({title, body, actions=[], width, onClose}){
   const bg = h(`<div class="modal-bg"><div class="modal" ${width?`style="width:min(${width}px,94vw)"`:''}>

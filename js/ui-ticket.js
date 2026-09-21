@@ -35,7 +35,7 @@ export function openTicket(tileEl, tile, dir, {perms, onDone}){
     fechaDispCliente: fdc ? PX.iso(fdc) : null, fechaDispEstandar: fde ? PX.iso(fde) : null, comision: comision(nominal), cuentaComision: cuentaComision() };
 
   tileEl.classList.add('ticket'); tileEl.innerHTML = `
-    <div class="t-head"><span class="pair">${esc(pair)}</span><span class="st wip" data-st>Solicitud pendiente</span><span class="muted small">${esc(tipoOp)}</span>
+    <div class="t-head"><span class="pair">${esc(pair)}</span><span class="st wip" data-st>Solicitud pendiente</span><span class="muted small"><b>${esc(tipoOrden)}</b> · ${esc(tipoOp)}</span>
       <span class="grow" style="flex:1"></span><button class="icon-btn" data-close title="Cerrar">✕</button></div>
     <div class="tk">
       <div>

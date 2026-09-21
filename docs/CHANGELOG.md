@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.1 — 2026-09-21 · observaciones de Lucio (solo lo actual)
+- Reloj del sistema `dd/mm/aaaa · hh:mm:ss` y chip de entorno **LOCAL / UAT / PRO** en cabecera de sala y bróker y en el pie del login (L-obs-2).
+- El ticket muestra **FORWARD · SEGURO DE CAMBIO** para que se vea el tipo de orden además del nombre de producto (L-bug-1).
+- Tips de Lucio (XLS como reference data, market data real, multi-idioma) → `docs/PETICIONES.md` § Roadmap (R-01…R-03).
+
 ## v0.2 — 2026-09-20 · correctivos de la revisión de Camilo (solo funcional heredado, nada nuevo)
 Origen: `2Trade-Trato/contexto/2026-09-20-camilo-Review-Trato-v0.1/` (44 defectos, 18 peticiones). Se implementaron **P-001 a P-011, P-016 (parte), P-017 y P-018**. P-012 a P-015 (propuestas aiRoss con chip "nuevo") quedan aparcadas por decisión de Maxi.
 - **P-003** signo del margen con un único criterio (`core.marginSign`: ¿el cliente compra la divisa base?) en ticket, anticipo y cancelación; semillas SC-165578 y SC-165601 coherentes.

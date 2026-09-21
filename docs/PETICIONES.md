@@ -46,7 +46,27 @@ _(vacía)_
 ## En curso
 _(vacío)_
 
-## Backlog propuesto (ordenado)
+## Observaciones de Lucio (WhatsApp, 21-sep-2026) — qué se aplicó y qué va a roadmap
+| # | Qué dijo | Tipo | Estado |
+|---|---|---|---|
+| L-bug-1 | "quedan todos como seguro de cambio, no como fwd" | actual | ✅ v0.2.1: el ticket muestra **FORWARD · SEGURO DE CAMBIO** (tipo de orden + tipo de operación). Nota: *seguro de cambio* es el nombre del forward en la banca española y en el sistema de referencia; se mantiene, pero ya no se oculta que es un FWD |
+| L-obs-2 | falta la **fecha del sistema** arriba: los traders la miran para saber si están en PRO o en pruebas | actual | ✅ v0.2.1: reloj `dd/mm/aaaa · hh:mm:ss` + chip de entorno **LOCAL / UAT / PRO** en cabecera de sala, bróker y login |
+| L-obs-1 | ¿back-end o 100 % JS? con la doc oficial se podría deducir la arquitectura actual (y hay que llevarla a otro territorio) | estratégico | anotado: es 100 % front, sin back; la arquitectura objetivo se decide en la propuesta, no en el prototipo |
+| L-tip-1 | prototipo autocontenido con **XLS como reference data** que se lee al arrancar (contratos, usuarios, pares, operaciones previas); primero exportar a xls lo que se ve, luego alimentar a mano | mejora | 🗺 roadmap R-01 |
+| L-tip-2 | conectar el **market data a Yahoo Finance** para que el precio sea real, no random | mejora | 🗺 roadmap R-02 (ojo CORS desde GitHub Pages: hará falta un proxy o un fichero de precios refrescado por Action) |
+| L-tip-3 | **multi-idioma por usuario**; cuidado con la traducción de "seguros de cambio" | mejora | 🗺 roadmap R-03 (ya existe el conmutador ES/EN sin textos; el glosario EN lo fija negocio: *FX forward*, no traducción literal) |
+| L-estrategia | cómo contarlo: no decir "lo hice en un rato con IA"; sí "rehicimos el frontal en una semana desde las specs originales"; no decir que tenemos el código fuente; añadir 3-4 puntos de mejora (multiproducto, microservicios, renovación tecnológica) | discurso | anotado para Maxi; no toca código |
+
+## Roadmap (mejoras, no correctivos) — para la versión mejorada
+| R | Qué | Origen | Notas |
+|---|---|---|---|
+| R-01 | Reference data en XLS/CSV leído al arrancar (clientes, cuentas, líneas, usuarios, pares, operaciones históricas) + exportación completa | Lucio tip 1 | permite cientos de clientes y miles de operaciones sin tocar código; encaja con B-08 |
+| R-02 | Market data real (Yahoo Finance u otra fuente pública) con refresco periódico y fallback al random walk | Lucio tip 2 | CORS: proxy mínimo o fichero JSON regenerado por GitHub Action cada N minutos |
+| R-03 | Multi-idioma por usuario (ES/EN) con glosario de negocio validado | Lucio tip 3 · B-02 | "seguro de cambio" → *FX forward*; "clave de arbitraje" → *FX spot (non-account)* a validar |
+| R-04 | Capa "nuevo" aiRoss: P-012 tope mark-up, P-013 trazabilidad de cotizaciones no cerradas, P-014 multibanco, P-015 explicación del precio | Camilo | aparcadas por decisión de Maxi (20-sep) |
+| R-05 | Rediseño v0.3: layout propio (no clon), navegación vertical de operaciones, barra de cliente abajo, ≥ 2 filas de paneles, multiventana para varias pantallas | Maxi 21-sep | ver `docs/PROMPT-v0.3.md` |
+
+## Backlog propuesto v0.1 (ordenado)
 | # | Qué | Dónde | Por qué | Estado |
 |---|---|---|---|---|
 | B-01 | Detalle de operación con diseño (no key/value crudo) y acciones dentro del modal | blotters → Más info | primera cosa que abre cualquier usuario | ✅ v0.2 (diseño por bloques; acciones dentro del modal, pendiente) |

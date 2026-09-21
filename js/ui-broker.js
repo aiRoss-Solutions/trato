@@ -1,5 +1,5 @@
 // Trato · Bróker Online (canal web del cliente): vista estándar y profesional, firma ágil, módulo de operación
-import { $, $$, h, esc, fmtN, toast, modal, parseAmount, stateChip } from './ui.js';
+import { $, $$, h, esc, fmtN, toast, modal, parseAmount, stateChip, envLabel, sysClock } from './ui.js';
 import * as C from './core.js';
 import * as PX from './prices.js';
 import { S } from './state.js';
@@ -36,6 +36,7 @@ function render(cbs){
   unsubs.forEach(f=>f()); unsubs=[ PX.subscribe(onTick), C.onOps(()=>{ renderBlotter(); renderTop(cbs); }) ];
   clearInterval(timer); timer = setInterval(renderFoot, 1000);
 }
+let clockTimer=null;
 function renderTop(cbs){
   const c=S.client, ctx=S.ctx;
   const acct = (label,key,items,get,bal) => `<div class="acct"><label>${label}</label><select data-ctx="${key}">${items.map((it,i)=>`<option value="${i}" ${ctx[key]===it?'selected':''}>${esc(get(it))}</option>`).join('')}</select><span class="bal">${bal}</span></div>`;
@@ -45,6 +46,7 @@ function renderTop(cbs){
     ${acct('Cuenta de abono','abono',c.cuentas,x=>x.n,'')}
     ${acct('Línea seguro de cambio','linea',c.lineas,x=>`${x.n} · ${x.div}`,`Límite ${fmtN(ctx.linea.disp,2)} ${ctx.linea.div}`)}
     <span style="flex:1"></span>
+    <span class="sysclock mono" data-clock title="Fecha y hora del sistema"></span><span class="envchip ${envLabel().toLowerCase()}" title="Entorno">${envLabel()}</span>
     <span class="chip">${esc(S.user.nombre)}</span>
     <span class="seg"><button data-view="std" class="${view==='std'?'on':''}">Estándar</button><button data-view="pro" class="${view==='pro'?'on':''}">Profesional</button></span>
     <button class="icon-btn" data-menu>☰</button>`;
@@ -52,6 +54,7 @@ function renderTop(cbs){
   q('[data-swapacc]').onclick=()=>{ [S.ctx.cargo,S.ctx.abono]=[S.ctx.abono,S.ctx.cargo]; renderTop(cbs); };
   $$('[data-view]',root).forEach(b=>b.onclick=()=>{ view=b.dataset.view; render(cbs); });
   q('[data-menu]').onclick=()=>q('[data-rpanel]').classList.toggle('open');
+  clearInterval(clockTimer); const ck=q('[data-clock]'); if(ck) clockTimer=sysClock(ck);
 }
 function renderMain(){
   const main = q('[data-main]');

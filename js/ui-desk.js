@@ -1,5 +1,5 @@
 // Trato · canales SALA / TEL: cabecera, cabecera pre-trade, workspaces, streaming, blotters, panel derecho
-import { $, $$, h, esc, fmtN, bigPx, toast, modal, parseAmount, cmenu } from './ui.js';
+import { $, $$, h, esc, fmtN, bigPx, toast, modal, parseAmount, cmenu, envLabel, sysClock } from './ui.js';
 import * as C from './core.js';
 import * as PX from './prices.js';
 import { S, resetTilesFromWorkspace } from './state.js';
@@ -10,6 +10,7 @@ import { openTicket, openOrderBoleta, openAnticipo, openCancelacion, openCancelG
 let root, perms, unsubs = [];
 const q = s => $(s, root);
 
+let clockTimer=null;
 export function mountDesk(el, user, {onLogout, onToggleConsole, onTheme}){
   root = el; S.user = user; perms = user.perms; S.client = null; S.ctx = {cargo:null,abono:null,linea:null,ordenante:null};
   resetTilesFromWorkspace();
@@ -40,11 +41,13 @@ function renderTopbar(){
     ${sel('Línea seguro de cambio','linea', c&&!c.generic? c.lineas:[], x=>`${x.n} · ${x.div}`)}
     ${sel('Ordenante','ordenante', c&&!c.generic? c.ordenantes:[], x=>`${x.nif} ${x.apoderado?'· apoderado':''}`)}
     <div class="tright">
+    <span class="sysclock mono" data-clock title="Fecha y hora del sistema"></span><span class="envchip ${envLabel().toLowerCase()}" title="Entorno">${envLabel()}</span>
     <button class="chip" data-ws title="Workspaces">▦ ${esc(S.workspaces[S.activeWs].name)}</button>
     <button class="modebtn" data-rfs title="Orden limitada · Call order · Aviso">RFS</button>
     <span class="chip">${esc(S.user.nombre)} · <span class="mono">${esc(S.user.canal)}</span></span>
     <button class="icon-btn" data-menu title="Menú">☰</button>
     </div>`;
+  clearInterval(clockTimer); clockTimer = sysClock(q('[data-clock]'));
   const cli = q('[data-cli]');
   cli.onchange = e => selectClient(e.target.value);
   cli.oninput = e => { const v=e.target.value.trim(); if(CLIENTS.some(x=>x.nombre===v || x.nif===v) || /^cliente gen[ée]rico$/i.test(v)) selectClient(v); };
