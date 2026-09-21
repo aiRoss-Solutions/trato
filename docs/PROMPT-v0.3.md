@@ -1,6 +1,7 @@
 # PROMPT · Trato v0.3 — de "clon" a plataforma propia de distribución FX
 
-> Para pegar tal cual en una sesión de Claude Code abierta en `~/dev/trato` (rama `develop`). Escrito el 2026-09-21.
+> Para pegar tal cual en una sesión de Claude Code abierta en `~/dev/trato` (rama `develop`). Escrito el 2026-09-21,
+> revisado el mismo día: **las ideas de diseño son sugerencias, el benchmark manda.**
 > Regla de oro de esta sesión: **antes de tocar código, listá lo que NO sabés** (sección 9), proponé un default para
 > cada punto y preguntá solo lo que bloquea. Lo que no bloquea, decidilo, anotalo en `docs/UNKNOWNS.md` y seguí.
 
@@ -28,38 +29,35 @@ en el texto de la home.
 **Lo que NO cambia:** toda la lógica de negocio de v0.2 (reglas de `core.js`, estados, línea 89, dos patas, márgenes,
 comisión, tenores, validaciones). Regresión cero: la lista de comprobación está en §8.
 
-## 3. Requisitos de diseño (obligatorios)
-1. **Navegación vertical de operaciones.** Las operaciones realizadas dejan de ser una tabla ancha en un dock inferior
-   y pasan a un **panel vertical** (columna derecha o izquierda, a decidir en §9) con **tarjetas por operación**
-   apilables y filtrables: referencia, tipo (chip), par, dirección, nominal, precio cliente, estado, hora. Clic → detalle;
-   ⋯ → acciones (anticipar, cancelar, completar mark-up, más info). La tabla completa sigue existiendo pero como
-   **vista alternativa** ("ver como tabla") y como **ventana propia** (§4).
-2. **Barra de cliente y contexto ABAJO**, no arriba: cliente, cuentas de cargo/abono, línea 89, ordenante, pre-trade
-   resumido (MiFID, LEI, margen, límite/disponible) en una **barra inferior fija** de una o dos alturas, plegable. Arriba
-   queda solo lo global: marca, modo (spot/fwd/flex), workspace, reloj + entorno, usuario, menú.
-3. **Al menos dos filas de paneles visibles** a 1440×900 sin scroll: precios (tiles) en la parte superior y, debajo, una
-   segunda fila con paneles configurables (posición viva, órdenes vivas, consola de integración compacta, favoritos,
-   últimas operaciones). Los tiles de precio se hacen más compactos (altura ≤ 170 px) para que quepan las dos filas.
-4. **Estilo: 2Trade de Banco Sabadell × aiRoss.** Lo que sabemos con certeza del estilo 2Trade "de marca" (brochure
-   2018 y pptx de oferta a BS, en `contexto/` de la carpeta Dropbox si hace falta verlos): cian **#2AA7DF** + gris
-   **#6D6E71**, tipografía redondeada, bloques claros, esquinas suaves, fondos blancos con bandas de color. De la UI de
-   BS en producción **no tenemos capturas** (§9). Mezcla objetivo: base aiRoss (navy `#071B57`, acento `#2F7BFF`,
-   Geist, "navy sin cajas") + **un cian secundario** de la familia 2Trade para estados de mercado/streaming y chips de
-   producto, más densidad y bandas de color en cabeceras de panel al estilo terminal. Nada de degradados ni sombras
-   grandes. Tema oscuro "Sala" se conserva.
-5. **Multiventana real.** Trato tiene que poder repartirse en varias pantallas como hacen traders y ventas:
-   - Cada panel (tiles de precios, operaciones, posición, órdenes, consola, ticket abierto, detalle de operación,
-     boleta de órdenes) tiene un botón **⧉ "abrir en ventana"** que lo abre con `window.open` en una ventana propia
-     (`/?panel=operaciones&ws=G10`), sin cabecera ni barra, con el mismo estado.
-   - Acciones que **por defecto** abren ventana nueva (configurable por usuario en ☰): detalle de operación, boleta de
-     órdenes, consola de integración, posición.
-   - **Sincronización de estado entre ventanas** con `BroadcastChannel` (fallback `storage` event): operaciones,
-     precios, cliente seleccionado, workspace, tema. Una ventana hija que ejecuta un ticket lo ve la madre al instante.
-   - Recordar la disposición de ventanas por usuario (`localStorage`: qué paneles están fuera y su tamaño/posición
-     aproximada) y ofrecer "restaurar disposición" al entrar.
-   - Si el navegador bloquea pop-ups, avisar con un toast y un enlace para abrir a mano.
-6. **Reloj y entorno siempre visibles** (ya existe en v0.2.1): mantenerlo arriba a la derecha en todas las ventanas.
-7. **Responsive** se mantiene (< 900 px: una columna, sin multiventana).
+## 3. Diseño: primero investigás, después decidís (nada de esto es obligatorio)
+Lo de abajo son **puntos de partida de Maxi para que seas creativo**, no requisitos. Antes de dibujar nada:
+1. **Leé `docs/BENCHMARK-v0.3.md`** (SDPs de bancos, portales de empresas de la banca española, fintechs, multi-dealer,
+   multiventana, principios de terminal) y **ampliá el benchmark** si te falta algo: buscá en la web al menos tres
+   referencias más (p. ej. JPM Execute, BARX, Deutsche Autobahn, Goldman Marquee, Kantox, Ebury) y añadilas al documento
+   con lo que aportan a Trato. Sin capturas de UI no inventes detalles: decí "no verificado".
+2. Con eso, proponé la **navegación y el layout ÓPTIMOS** para dos usuarios distintos: el sales trader de sala (densidad,
+   varias pantallas, teclado) y el cliente empresa (claridad, dos clics, situación primero). Justificá cada decisión con
+   una referencia del benchmark o con un principio de §3 del benchmark. Si tu propuesta contradice una idea de Maxi,
+   decilo y explicá por qué.
+
+Ideas de Maxi (usalas, mejoralas o descartalas con argumento):
+- **Operaciones en navegación vertical** (tarjetas en una columna, en vez de la tabla ancha abajo). Si tras el análisis
+  se queda, **a la derecha**; la tabla completa sigue como "ver como tabla" y en ventana propia.
+- **Barra de cliente y contexto abajo**, no arriba; arriba solo lo global (marca, modo, workspace, reloj+entorno, usuario).
+- **Al menos dos filas de paneles visibles** a 1440×900: precios arriba, paneles configurables debajo (posición viva,
+  órdenes vivas, estado de la plataforma, últimas operaciones). Tiles más compactos.
+- **Estilo**: olvidate de imitar a nadie. Dato: el sistema de referencia del banco mediano era **fondo negro**. Propuesta
+  de Maxi: mantener el estilo actual (aiRoss, Geist, "navy sin cajas") pero con **fondos navy** como tema por defecto en
+  sala (`#050F38` / paneles `#0B1C55` / acento `#2F7BFF` / cian de mercado `#2AA7DF` para streaming y estado). El claro
+  se conserva. Lo dejo en tu mano: decidí y justificá.
+- **Multiventana**: cada panel con ⧉ "abrir en ventana" (`window.open` a `./?panel=…`), acciones que por defecto abren
+  ventana (detalle, boleta, consola, posición), **disposiciones guardadas y restaurables** (como los snapshots de OpenFin),
+  sincronización con `BroadcastChannel` (fallback `storage`), aviso si el navegador bloquea pop-ups. Esto sí es lo más
+  cercano a obligatorio: traders y ventas reparten la app en varias pantallas, y hasta el portal de empresas de BBVA
+  tiene ventanas de precio independientes.
+- **Paleta de comandos ⌘K** para cliente, par y acción; teclado primero en sala (Enter pide precio, flechas mueven pips,
+  Esc cierra).
+- **Reloj y entorno** siempre visibles (ya existe). **Responsive** se mantiene.
 
 ## 4. Requisitos de producto (para que "se note" que no es un clon)
 - **Nomenclatura neutra y propia**: los nombres de producto en la UI salen de un glosario único (`js/glossary.js`) con
@@ -112,12 +110,12 @@ la madre; recargar la madre restaura la disposición.
 ## 9. UNKNOWNS — lo que el autor de este prompt no sabe y vos tampoco (resolvé antes de diseñar)
 Para cada uno: proponé un default, aplicalo si no bloquea, y anotalo en `docs/UNKNOWNS.md`. Preguntá a Maxi solo los
 marcados ⛔.
-1. ⛔ **Estilo real del 2Trade de Banco Sabadell.** En el backup solo hay marca (brochure 2018, pptx de oferta), **no hay
-   capturas de la UI de BS**. Antes de fijar la paleta: pedirle a Maxi que describa o localice capturas (¿DAPs de BS en
-   `Clientes (1)/Banc Sabadell/2015/2Trade/`? ¿su memoria: fondo claro u oscuro, tiles o grid, cuántas filas?). Default
-   si no hay respuesta: la mezcla descrita en §3.4.
-2. ⛔ **Dónde va el panel vertical de operaciones**: columna derecha (estilo bróker) o izquierda (estilo rail). Default:
-   derecha, 360 px, plegable, con la tabla clásica en "ver como tabla" y en ventana propia.
+1. ⛔ **Tema por defecto de la sala**: Maxi apunta a fondos navy (el sistema de referencia era negro) pero lo deja en
+   tu mano. Default: navy oscuro por defecto en SALA/TEL, claro en WEB; conmutable. Confirmar con una captura antes del
+   bloque de estilo.
+2. ⛔ **¿Se queda el panel vertical de operaciones y dónde?** Default tras el benchmark: sí, **a la derecha** (patrón
+   "feed de actividad" de los SDP; libera la fila inferior para la segunda fila de paneles), 360 px, plegable, con "ver
+   como tabla" y ventana propia. Si tu análisis dice otra cosa, proponelo con argumento.
 3. **Qué llena la segunda fila por defecto**: posición viva · órdenes vivas · estado de la plataforma · últimas 5
    operaciones. Default: esos cuatro, reordenables por arrastre, guardados con el workspace.
 4. **Altura de la barra inferior de cliente**: una fila densa (cliente + 4 selectores + 6 kv) o dos filas. Default: una
@@ -140,6 +138,8 @@ marcados ⛔.
 14. Todo lo que descubras que no está aquí: **añadilo a esta lista antes de decidirlo**.
 
 ## 10. Formato de tu primera respuesta
-1. La lista de §9 con tu default para cada punto y las dos preguntas ⛔ para Maxi.
-2. Un boceto en texto (ASCII) del layout a 1440×900 con las dos filas, el panel vertical y la barra inferior.
-3. El plan de commits. Después, esperá el OK de Maxi a los dos ⛔ y arrancá por el bloque (1).
+1. Benchmark ampliado (qué añadiste y qué te llevás) en `docs/BENCHMARK-v0.3.md`.
+2. **Dos propuestas de layout** en ASCII a 1440×900 (una más cercana a las ideas de Maxi, otra tuya) con pros/contras y
+   tu recomendación. Lo mismo, más breve, para el canal empresas.
+3. La lista de §9 con tu default para cada punto y las dos preguntas ⛔ para Maxi.
+4. El plan de commits. Después, esperá el OK de Maxi y arrancá por el bloque (1).
