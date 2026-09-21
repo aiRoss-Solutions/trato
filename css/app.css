@@ -488,54 +488,56 @@ html.is-panel,html.is-panel body{height:100%;overflow:hidden}
 .console.static .c-body{overflow:auto}
 
 /* =====================================================================
-   v0.3 · tema claro con bloques de color (Maxi 21-sep: "demasiado blanco"):
-   la Actividad y la barra de contexto van en navy; los tiles llevan banda navy en la cabecera.
+   v0.3 · tema claro equilibrado (Maxi 21-sep): cabecera navy · tiles de pares NAVY sobre fondo BLANCO ·
+   Actividad y barra de contexto en celeste · ticket abierto en blanco para que destaque
    ===================================================================== */
-:root:not([data-theme="sala"]) .main.v3 .activity{background:var(--navy);border-left-color:var(--navy);color:#E8EEFB}
-:root:not([data-theme="sala"]) .main.v3 .activity .a-head,:root:not([data-theme="sala"]) .main.v3 .activity .a-filters{border-bottom-color:#22408C}
-:root:not([data-theme="sala"]) .main.v3 .activity .a-head b{color:#fff}
-:root:not([data-theme="sala"]) .main.v3 .activity .count{background:rgba(255,255,255,.08);border-color:#22408C;color:#BFD6FF}
-:root:not([data-theme="sala"]) .main.v3 .activity .seg{border-color:#22408C}
-:root:not([data-theme="sala"]) .main.v3 .activity .seg button{color:#BFD6FF}
-:root:not([data-theme="sala"]) .main.v3 .activity .seg button.on{background:var(--accent);color:#fff}
-:root:not([data-theme="sala"]) .main.v3 .activity .icon-btn{color:#BFD6FF}
-:root:not([data-theme="sala"]) .main.v3 .activity .icon-btn:hover{background:rgba(255,255,255,.08);color:#fff}
-:root:not([data-theme="sala"]) .main.v3 .opcard{background:#0B2466;border-color:#22408C;color:#E8EEFB}
-:root:not([data-theme="sala"]) .main.v3 .opcard:hover,:root:not([data-theme="sala"]) .main.v3 .opcard:focus-visible{border-color:var(--market)}
-:root:not([data-theme="sala"]) .main.v3 .opcard .par,:root:not([data-theme="sala"]) .main.v3 .opcard .muted{color:#A9B7D3}
-:root:not([data-theme="sala"]) .main.v3 .opcard .buy{color:#2ECC71}:root:not([data-theme="sala"]) .main.v3 .opcard .sell{color:#FF8080}
-:root:not([data-theme="sala"]) .main.v3 .opcard .pchip{background:rgba(255,255,255,.06);border-color:#22408C;color:#BFD6FF}
-:root:not([data-theme="sala"]) .main.v3 .opcard .pchip.fwd,:root:not([data-theme="sala"]) .main.v3 .opcard .pchip.flex{color:var(--market);border-color:var(--market)}
-:root:not([data-theme="sala"]) .main.v3 .a-body .empty{color:#A9B7D3}
-:root:not([data-theme="sala"]) .main.v3 .a-body.astable{background:var(--bg-panel);color:var(--ink)}
-:root:not([data-theme="sala"]) .main.v3 .activity.collapsed .vlabel{color:#BFD6FF}
-/* barra inferior de contexto en navy */
-:root:not([data-theme="sala"]) .main.v3 .ctxbar{background:var(--navy);border-top-color:var(--navy);color:#fff}
-:root:not([data-theme="sala"]) .main.v3 .ctx-main{border-bottom-color:#22408C}
-:root:not([data-theme="sala"]) .main.v3 .ctx-main .ctx,:root:not([data-theme="sala"]) .main.v3 .ctx-main .cli{border-left-color:#22408C}
-:root:not([data-theme="sala"]) .main.v3 .ctx-main label{color:#BFD6FF}
-:root:not([data-theme="sala"]) .main.v3 .ctx-main select,:root:not([data-theme="sala"]) .main.v3 .ctx-main input{color:#fff;background:transparent}
-:root:not([data-theme="sala"]) .main.v3 .ctx-main input::placeholder{color:#8FA8DD}
-:root:not([data-theme="sala"]) .main.v3 .ctx-main select option{color:var(--ink)}
-:root:not([data-theme="sala"]) .main.v3 .ctx-main .icon-btn{color:#BFD6FF}
-:root:not([data-theme="sala"]) .main.v3 .ctx-kv{background:var(--navy-deep)}
-:root:not([data-theme="sala"]) .main.v3 .ctx-kv .kv{border-right-color:#22408C}
-:root:not([data-theme="sala"]) .main.v3 .ctx-kv .kv span:first-child{color:#8FA8DD}
-:root:not([data-theme="sala"]) .main.v3 .ctx-kv .kv span:last-child{color:#fff}
-:root:not([data-theme="sala"]) .main.v3 .ctxbar.generic .ctx-main{background:rgba(201,138,0,.25)}
-/* tiles: banda navy en la cabecera del par */
-:root:not([data-theme="sala"]) .main.v3 .tile .t-head{background:var(--navy);color:#fff;border-bottom-color:var(--navy)}
-:root:not([data-theme="sala"]) .main.v3 .tile .pair{color:#fff}
-:root:not([data-theme="sala"]) .main.v3 .tile .pair:hover{background:rgba(255,255,255,.1)}
-:root:not([data-theme="sala"]) .main.v3 .tile .t-head .seg{border-color:rgba(255,255,255,.35)}
-:root:not([data-theme="sala"]) .main.v3 .tile .t-head .seg button{color:#BFD6FF}
-:root:not([data-theme="sala"]) .main.v3 .tile .t-head .seg button.on{background:var(--accent);color:#fff}
-:root:not([data-theme="sala"]) .main.v3 .tile .t-head .icon-btn{color:#BFD6FF}
-:root:not([data-theme="sala"]) .main.v3 .tile .t-head .icon-btn:hover{background:rgba(255,255,255,.1);color:#fff}
-:root:not([data-theme="sala"]) .main.v3 .tile.ticket .t-head{background:var(--navy)}
-:root:not([data-theme="sala"]) .main.v3 .tile.ticket .t-head .muted{color:#BFD6FF}
-/* cabeceras de los paneles de la fila 2: banda fina de color */
-:root:not([data-theme="sala"]) .main.v3 .panel .c-h{border-bottom:2px solid var(--navy)}
+:root{--celeste:#E8F0FB;--celeste-2:#D9E6F8;--celeste-line:#C3D4EE}
+:root:not([data-theme="sala"]) .main.v3 .work,:root:not([data-theme="sala"]) .main.v3 .center{background:#fff}
+/* tiles navy */
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket){background:var(--navy);border-color:var(--navy);color:#E8EEFB;box-shadow:0 2px 8px rgba(7,27,87,.18)}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .t-head,:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .prices,:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .t-row,:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .side:first-child,:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .foot>div{border-color:#22408C}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .pair{color:#fff}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .pair:hover{background:rgba(255,255,255,.1)}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .t-head .seg{border-color:rgba(255,255,255,.3)}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .t-head .seg button{color:#BFD6FF}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .t-head .seg button.on{background:var(--accent);color:#fff}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .icon-btn{color:#BFD6FF}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .icon-btn:hover{background:rgba(255,255,255,.1);color:#fff}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .obsrow{background:rgba(255,255,255,.05)}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .obsrow input,:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .amt{background:rgba(255,255,255,.08);border-color:#22408C;color:#fff}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) input::placeholder{color:#8FA8DD}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .side:hover{background:rgba(255,255,255,.06)}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .side .lbl{color:#BFD6FF}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .side .lbl b{color:#fff}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .px{color:#fff}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .px .last{color:#BFD6FF}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .px.up{color:#2ECC71}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .px.down{color:#FF8080}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .swap{color:#fff;border-color:#22408C;background:rgba(255,255,255,.06)}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .foot{color:#BFD6FF}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .foot input[type=date],:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .foot select{color:#fff;color-scheme:dark}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .foot>div:first-child span{color:var(--market)}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) .stale span{color:var(--warn)}
+:root:not([data-theme="sala"]) .main.v3 .tile:not(.ticket) input.req{border-color:#FF8080!important;box-shadow:0 0 0 3px rgba(255,128,128,.25)!important}
+/* ticket abierto: blanco, destaca entre los navy */
+:root:not([data-theme="sala"]) .main.v3 .tile.ticket{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,123,255,.18)}
+/* actividad en celeste */
+:root:not([data-theme="sala"]) .main.v3 .activity{background:var(--celeste);border-left-color:var(--celeste-line)}
+:root:not([data-theme="sala"]) .main.v3 .activity .a-head,:root:not([data-theme="sala"]) .main.v3 .activity .a-filters{border-bottom-color:var(--celeste-line)}
+:root:not([data-theme="sala"]) .main.v3 .activity .count{background:#fff;border-color:var(--celeste-line)}
+:root:not([data-theme="sala"]) .main.v3 .activity .seg{background:#fff;border-color:var(--celeste-line)}
+:root:not([data-theme="sala"]) .main.v3 .opcard{background:#fff;border-color:var(--celeste-line)}
+:root:not([data-theme="sala"]) .main.v3 .opcard:hover,:root:not([data-theme="sala"]) .main.v3 .opcard:focus-visible{border-color:var(--accent)}
+:root:not([data-theme="sala"]) .main.v3 .a-body.astable{background:#fff}
+/* barra inferior en celeste */
+:root:not([data-theme="sala"]) .main.v3 .ctxbar{background:var(--celeste);border-top-color:var(--celeste-line);box-shadow:none}
+:root:not([data-theme="sala"]) .main.v3 .ctx-main{border-bottom-color:var(--celeste-line)}
+:root:not([data-theme="sala"]) .main.v3 .ctx-main .ctx,:root:not([data-theme="sala"]) .main.v3 .ctx-main .cli{border-left-color:var(--celeste-line)}
+:root:not([data-theme="sala"]) .main.v3 .ctx-kv{background:var(--celeste-2)}
+:root:not([data-theme="sala"]) .main.v3 .ctx-kv .kv{border-right-color:var(--celeste-line)}
+/* paneles de la fila 2: blancos con cabecera celeste */
+:root:not([data-theme="sala"]) .main.v3 .panel .c-h{background:var(--celeste);border-bottom:1px solid var(--celeste-line)}
+:root:not([data-theme="sala"]) .main.v3 .r1-head .chip{background:#fff}
 /* cabecera superior también en negativo (Maxi 21-sep) */
 :root:not([data-theme="sala"]) .main.v3 .topbar{background:var(--navy);border-bottom-color:var(--navy);color:#fff}
 :root:not([data-theme="sala"]) .main.v3 .topbar .brand b{color:#fff}

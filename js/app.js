@@ -10,7 +10,7 @@ import * as SYNC from './sync.js';
 import { mountBroker } from './ui-broker.js';
 
 const root = $('#root');
-S.theme = localStorage.getItem('trato.theme.v3') || 'sala';   // v0.3: la mesa arranca en navy (clave nueva: no hereda el 'claro' guardado por v0.2)
+S.theme = localStorage.getItem('trato.theme.v3') || 'light';   // v0.3: tema claro equilibrado por defecto (navy · blanco · celeste); 'sala' = todo navy, opcional
 applyTheme(S.theme);
 PX.start();
 
